@@ -1,5 +1,5 @@
 # Status
-- Done: P0; P1; P1R (all items incl. both spikes). Client now uses `@Retryable` (I/O + 5xx only, 429 fails fast) with concurrency limit below it (D11, D11a); declarative `SteamWebApi` (D12). Spec bumped to v1.3.
-- Next: P2 core tools (LibraryService, get_library, get_playtime, get_recent_games). Waiting for go.
+- Done: P0; P1; P1R; P2 (LibraryService, RecentGamesService, get_library, get_playtime, get_recent_games; 134 tests).
+- Next: P3 rich tools (get_achievements, get_game_news, get_game_details). Waiting for go.
 - Blockers: none.
-- Notes: NullAway on main and tests. 88 tests.
+- Notes: tools forward raw args, services validate (D15). STDIO transport always on, tests use @McpSpringBootTest (D16). NullAway on main and tests.

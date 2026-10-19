@@ -50,3 +50,16 @@ No `SteamService`/`SteamServiceImpl`. Capability services (`LibraryService`, `Ac
 
 ## D14 — Config strictness vs skill (2026-10-19)
 configuration-properties says missing credentials should fail startup; spec 4.3 demands offline start and call-time `CONFIGURATION_MISSING`. Spec wins (D6).
+
+## D15 — P2 contract details (2026-10-19)
+- `visibilityStatus` is `VISIBLE` (Steam returned at least one game, before filtering) or `UNKNOWN` (empty or missing games list). Spec example shows `UNKNOWN` next to a populated list but also demands no claim without evidence; `VISIBLE` only when evidence exists.
+- `iconUrl` is always null: Steam returns only an icon hash and the image URL pattern is not part of the documented Web API.
+- Missing `playtime_forever` stays null in output; for sorting and the `includeNeverPlayed=false` filter it counts as 0.
+- `name` can be null; null names never match a `query` and sort as empty string. Ties break by name then appid so paging is stable.
+- `limit` for `get_recent_games` is also applied locally, in case Steam returns more than `count`.
+- Defaults and validation live in the services (`LibraryQuery`), tools forward raw nullable arguments.
+- `get_playtime` is hosted by `LibraryService` (same data); `LibraryService.findOwned` is reused by `get_game_details` in P3.
+- A missing required `appid` is rejected by the MCP framework before our code runs (generic framework error, not our envelope). To be confirmed and documented in the E2E test.
+
+## D16 — Spring AI 2.0.1 always starts a STDIO transport (2026-10-19)
+`spring.ai.mcp.server.stdio` has no effect for non-web applications: `stdioServerTransport` is registered whenever no other `McpServerTransportProviderBase` bean exists (verified with `ApplicationContextRunner` for true/false/unset). Fine for production (STDIO only), but in Spring tests it read System.in inside the surefire fork and hung JVM exit for 30 s. Tests use `@McpSpringBootTest`, which imports `QuietMcpTransport` (a stdio provider on null streams) so the auto-configured one backs off. Keep `stdio: true` in `application.yml` as documentation. Never add a web starter: it would change transport selection.
