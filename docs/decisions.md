@@ -33,8 +33,8 @@ One `SteamException(ErrorCode, fixedMessage)` in `model/` (no cause, no stack tr
 ## D10 — Client status handling (2026-10-19)
 HTTP 400 with a parseable envelope is returned to the caller (Steam reports "no stats"/private data this way for `GetPlayerAchievements`); service maps it. Other 4xx, 3xx, empty/oversized/malformed bodies and missing envelope -> `UPSTREAM_BAD_RESPONSE`. Redirects are never followed. 401/403 -> `UPSTREAM_AUTH_FAILED`, no retry.
 
-## D11 — Retry mechanism (open, decided in P1R spike A)
-Custom loop vs Framework 7 `@Retryable`. Decision criteria: `Retry-After` support, test determinism, overall deadline. Outcome recorded here after the spike.
+## D11 — Retry mechanism: keep custom loop (2026-10-19, spike A done)
+No-go on Framework 7 `@Retryable`. Evidence from spring-core/spring-context 7.0.9: `BackOffExecution.nextBackOff()` takes no arguments and `MethodRetryPredicate.shouldRetry(Method, Throwable)` only returns a boolean, so neither can use a `Retry-After` value carried by the exception; spec section 8 requires honoring it (seconds and HTTP-date, capped at 10 s). Tests would also sleep for real or need a full proxy context. Kept the loop. Adopted from the skill: `@EnableResilientMethods` + class-level `@ConcurrencyLimit(limitString="${steam.api.max-concurrent-requests:4}")` on `SteamApiClientImpl` (one limit shared by all methods, verified by test). Added `steam.api.total-timeout` (default 30 s) as overall deadline: no retry sleep starts if it would pass the deadline.
 
 ## D12 — Declarative HTTP client (open, decided in P1R spike B)
 Manual `RestClient.exchange` vs `@HttpExchange` + `@ImportHttpServices`. Criteria: no-throw status handling, status/header access, redirects off, allowlist on resolved URL, WireMock suite unchanged. Outcome recorded here after the spike.
