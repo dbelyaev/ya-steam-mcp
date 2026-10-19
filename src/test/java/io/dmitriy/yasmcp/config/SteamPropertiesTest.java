@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
@@ -98,6 +99,21 @@ class SteamPropertiesTest {
 			// Then
 			assertThat(text).doesNotContain("SECRETKEY123").doesNotContain("76561197960287930").contains("<redacted>");
 		});
+	}
+
+	@Test
+	void binding_withEnvironmentVariablePlaceholders_shouldPopulateKeyAndSteamId() {
+		// Given: application.yml maps STEAM_API_KEY / STEAM_ID onto steam.api.*
+		runner.withInitializer(new ConfigDataApplicationContextInitializer())
+			.withPropertyValues("STEAM_API_KEY=envkey", "STEAM_ID=76561197960287930")
+			.run(ctx -> {
+				// When
+				var api = ctx.getBean(SteamProperties.class).api();
+
+				// Then
+				assertThat(api.requireKey()).isEqualTo("envkey");
+				assertThat(api.requireSteamId()).isEqualTo("76561197960287930");
+			});
 	}
 
 }
