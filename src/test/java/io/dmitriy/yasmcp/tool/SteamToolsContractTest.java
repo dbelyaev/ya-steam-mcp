@@ -85,4 +85,16 @@ class SteamToolsContractTest {
 		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
 	}
 
+	@Test
+	void getAchievements_inputSchema_shouldRequireAppidOnly() {
+		// When
+		Tool tool = tool("get_achievements");
+
+		// Then
+		assertThat(required(tool)).containsExactly("appid");
+		assertThat(property(tool, "language").get("type")).isEqualTo("string");
+		assertThat(property(tool, "includeLocked").get("type")).isEqualTo("boolean");
+		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
+	}
+
 }

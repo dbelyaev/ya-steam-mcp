@@ -7,6 +7,7 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
 
+import io.dmitriy.yasmcp.service.AchievementService;
 import io.dmitriy.yasmcp.service.LibraryService;
 import io.dmitriy.yasmcp.service.RecentGamesService;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
@@ -23,13 +24,17 @@ final class SteamTools {
 
 	private final RecentGamesService recentGamesService;
 
+	private final AchievementService achievementService;
+
 	private final ToolResults results;
 
 	private final Clock clock;
 
-	SteamTools(LibraryService libraryService, RecentGamesService recentGamesService, ToolResults results, Clock clock) {
+	SteamTools(LibraryService libraryService, RecentGamesService recentGamesService,
+			AchievementService achievementService, ToolResults results, Clock clock) {
 		this.libraryService = libraryService;
 		this.recentGamesService = recentGamesService;
+		this.achievementService = achievementService;
 		this.results = results;
 		this.clock = clock;
 	}
@@ -63,6 +68,18 @@ final class SteamTools {
 			@McpToolParam(description = "Maximum games to return, 1-100; default 20", required = false) @Nullable Integer limit) {
 		return results.run("get_recent_games",
 				() -> ToolResponse.of(recentGamesService.getRecentGames(limit), clock.instant()));
+	}
+
+	@McpTool(name = "get_achievements",
+			description = "Get available per-player achievements for an AppID and optionally enrich names/descriptions from Steam schema.",
+			annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true, openWorldHint = true))
+	CallToolResult getAchievements(
+			@McpToolParam(description = "Steam AppID, integer 1-4294967295", required = true) @Nullable Long appid,
+			@McpToolParam(description = "Steam language identifier such as english, russian or norwegian; default english", required = false) @Nullable String language,
+			@McpToolParam(description = "Include locked achievements; default true", required = false) @Nullable Boolean includeLocked,
+			@McpToolParam(description = "Maximum achievements to return, 1-250; default 100", required = false) @Nullable Integer limit) {
+		return results.run("get_achievements",
+				() -> ToolResponse.of(achievementService.getAchievements(appid, language, includeLocked, limit), clock.instant()));
 	}
 
 }

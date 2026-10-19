@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.dmitriy.yasmcp.model.Achievement;
+import io.dmitriy.yasmcp.model.AchievementList;
 import io.dmitriy.yasmcp.model.ErrorCode;
 import io.dmitriy.yasmcp.model.GameSummary;
 import io.dmitriy.yasmcp.model.LibraryPage;
@@ -24,6 +26,7 @@ import io.dmitriy.yasmcp.model.RecentGames;
 import io.dmitriy.yasmcp.model.Result;
 import io.dmitriy.yasmcp.model.SteamException;
 import io.dmitriy.yasmcp.model.VisibilityStatus;
+import io.dmitriy.yasmcp.service.AchievementService;
 import io.dmitriy.yasmcp.service.LibraryService;
 import io.dmitriy.yasmcp.service.RecentGamesService;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
@@ -44,12 +47,15 @@ class SteamToolsTest {
 	@Mock
 	RecentGamesService recentGamesService;
 
+	@Mock
+	AchievementService achievementService;
+
 	SteamTools tools;
 
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-10-19T18:00:00Z"), ZoneOffset.UTC);
-		tools = new SteamTools(libraryService, recentGamesService, new ToolResults(mapper), clock);
+		tools = new SteamTools(libraryService, recentGamesService, achievementService, new ToolResults(mapper), clock);
 	}
 
 	private JsonNode json(CallToolResult result) {
@@ -180,6 +186,42 @@ class SteamToolsTest {
 		verify(recentGamesService).getRecentGames(null);
 		assertThat(((TextContent) result.content().getFirst()).text()).doesNotContain("SECRET999")
 			.contains("INTERNAL_ERROR");
+	}
+
+	@Test
+	void getAchievements_withPartialResult_shouldExposePartialFlagAndWarnings() {
+		// Given
+		var list = new AchievementList(620, true, 1, 1, 1, false,
+				List.of(new Achievement("A", null, null, true, Instant.parse("2025-01-01T12:00:00Z"), null)));
+		when(achievementService.getAchievements(620L, "russian", false, 10))
+			.thenReturn(new Result<>(list, true, List.of("Achievement schema is unavailable")));
+
+		// When
+		var result = tools.getAchievements(620L, "russian", false, 10);
+
+		// Then
+		assertThat(result.isError()).isFalse();
+		JsonNode body = json(result);
+		assertThat(body.at("/meta/partial").asBoolean()).isTrue();
+		assertThat(body.at("/meta/warnings/0").asString()).contains("schema is unavailable");
+		assertThat(body.at("/data/achievements/0/unlockTime").asString()).isEqualTo("2025-01-01T12:00:00Z");
+		assertThat(body.at("/data/achievements/0/displayName").isNull()).isTrue();
+		assertThat(body.at("/data/available").asBoolean()).isTrue();
+	}
+
+	@Test
+	void getAchievements_whenUnavailable_shouldReturnNonRetryableErrorNotEmptySuccess() {
+		// Given
+		when(achievementService.getAchievements(620L, null, null, null))
+			.thenThrow(new SteamException(ErrorCode.ACHIEVEMENTS_UNAVAILABLE, "Achievements are not available for this game"));
+
+		// When
+		var result = tools.getAchievements(620L, null, null, null);
+
+		// Then
+		assertThat(result.isError()).isTrue();
+		assertThat(json(result).at("/error/code").asString()).isEqualTo("ACHIEVEMENTS_UNAVAILABLE");
+		assertThat(json(result).has("data")).isFalse();
 	}
 
 }
