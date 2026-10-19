@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+	<!-- logback status messages default to stdout -->
+	<statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
 	<!-- stdout is reserved for MCP JSON-RPC; all logs go to stderr -->
 	<appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
 		<target>System.err</target>
