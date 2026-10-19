@@ -121,7 +121,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 	}
 
 	private <T> T get(String endpoint, String path, Map<String, Object> params, Class<T> type,
-			Function<T, ?> envelope) {
+			Function<T, @Nullable Object> envelope) {
 		for (int attempt = 0;; attempt++) {
 			Outcome outcome = attempt(endpoint, path, params);
 			if (outcome.status() >= 200 && outcome.status() < 300 || outcome.status() == 400) {
@@ -163,7 +163,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 		return body.length > MAX_BODY_BYTES ? null : body;
 	}
 
-	private <T> T parse(byte @Nullable [] body, Class<T> type, Function<T, ?> envelope) {
+	private <T> T parse(byte @Nullable [] body, Class<T> type, Function<T, @Nullable Object> envelope) {
 		if (body == null || body.length == 0) {
 			throw failure(ErrorCode.UPSTREAM_BAD_RESPONSE);
 		}
