@@ -2,6 +2,7 @@ package io.dmitriy.yasmcp.config;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.List;
 import java.util.Set;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -25,7 +26,8 @@ import io.dmitriy.yasmcp.support.SteamIdValidator;
  */
 @Validated
 @ConfigurationProperties("steam")
-public record SteamProperties(@DefaultValue @Valid Api api, @DefaultValue Library library, @DefaultValue Store store) {
+public record SteamProperties(@DefaultValue @Valid Api api, @DefaultValue Library library, @DefaultValue Store store,
+		@DefaultValue @Valid Cache cache) {
 
 	public record Api(
 			@DefaultValue("https://api.steampowered.com") @NotNull URI baseUrl,
@@ -129,6 +131,36 @@ public record SteamProperties(@DefaultValue @Valid Api api, @DefaultValue Librar
 	}
 
 	public record Store(@DefaultValue("false") boolean enrichmentEnabled) {
+	}
+
+	/** In-memory response cache. TTLs are per endpoint; the API key is never part of a cache key. */
+	public record Cache(
+			@DefaultValue("true") boolean enabled,
+			@DefaultValue("5m") @NotNull Duration ownedGamesTtl,
+			@DefaultValue("2m") @NotNull Duration recentGamesTtl,
+			@DefaultValue("10m") @NotNull Duration achievementsTtl,
+			@DefaultValue("24h") @NotNull Duration schemaTtl,
+			@DefaultValue("10m") @NotNull Duration newsTtl) {
+
+		private static final Duration MIN_TTL = Duration.ofSeconds(1);
+
+		private static final Duration MAX_TTL = Duration.ofDays(7);
+
+		public static Cache defaults() {
+			return new Cache(true, Duration.ofMinutes(5), Duration.ofMinutes(2), Duration.ofMinutes(10),
+					Duration.ofHours(24), Duration.ofMinutes(10));
+		}
+
+		public Cache disabled() {
+			return new Cache(false, ownedGamesTtl, recentGamesTtl, achievementsTtl, schemaTtl, newsTtl);
+		}
+
+		@AssertTrue(message = "steam.cache.*-ttl values must be between 1s and 7d")
+		public boolean isTtlInRange() {
+			return List.of(ownedGamesTtl, recentGamesTtl, achievementsTtl, schemaTtl, newsTtl).stream()
+				.allMatch(ttl -> ttl == null || (ttl.compareTo(MIN_TTL) >= 0 && ttl.compareTo(MAX_TTL) <= 0));
+		}
+
 	}
 
 }

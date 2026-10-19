@@ -33,7 +33,7 @@ class SteamApiClientAdviceOrderTest {
 		var api = new SteamProperties.Api(URI.create("http://localhost:" + server.port()), "k", "76561197960287930",
 				Duration.ofSeconds(1), Duration.ofSeconds(2), 1, Duration.ofMillis(400), Duration.ofSeconds(30), 1,
 				"english", true);
-		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false));
+		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
 		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();
 		SteamWebApi webApi = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rc)).build()
 			.createClient(SteamWebApi.class);

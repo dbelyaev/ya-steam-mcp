@@ -13,6 +13,10 @@ public record ToolResponse<T>(T data, Meta meta) {
 		return new ToolResponse<>(result.data(), Meta.of(fetchedAt, false, result.partial(), result.warnings()));
 	}
 
+	public ToolResponse<T> withCached(boolean cached) {
+		return new ToolResponse<>(data, new Meta(meta.source(), meta.fetchedAt(), cached, meta.partial(), meta.warnings()));
+	}
+
 	public record Meta(String source, Instant fetchedAt, boolean cached, boolean partial, List<String> warnings) {
 
 		public static Meta of(Instant fetchedAt, boolean cached, boolean partial, List<String> warnings) {

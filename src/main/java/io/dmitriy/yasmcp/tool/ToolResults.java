@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import io.dmitriy.yasmcp.client.CacheTrace;
 import io.dmitriy.yasmcp.model.ErrorCode;
 import io.dmitriy.yasmcp.model.SteamException;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
@@ -34,7 +35,9 @@ public class ToolResults {
 	public CallToolResult run(String toolName, Supplier<ToolResponse<?>> action) {
 		long start = System.nanoTime();
 		try {
-			CallToolResult result = success(action.get());
+			CacheTrace trace = new CacheTrace();
+			ToolResponse<?> response = CacheTrace.within(trace, action);
+			CallToolResult result = success(trace.allFromCache() ? response.withCached(true) : response);
 			logOutcome(toolName, "ok", start);
 			return result;
 		}

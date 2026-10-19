@@ -133,4 +133,27 @@ class SteamPropertiesTest {
 			});
 	}
 
+	@org.junit.jupiter.params.ParameterizedTest
+	@ValueSource(strings = { "steam.cache.owned-games-ttl=0s", "steam.cache.schema-ttl=8d", "steam.cache.news-ttl=500ms" })
+	void binding_withCacheTtlOutOfRange_shouldFailStartup(String property) {
+		// Given / When / Then
+		runner.withPropertyValues(property).run(ctx -> assertThat(ctx).hasFailed());
+	}
+
+	@Test
+	void binding_withoutCacheSettings_shouldUseSpecDefaults() {
+		// Given / When
+		runner.run(ctx -> {
+			var cache = ctx.getBean(SteamProperties.class).cache();
+
+			// Then
+			assertThat(cache.enabled()).isTrue();
+			assertThat(cache.ownedGamesTtl()).hasMinutes(5);
+			assertThat(cache.recentGamesTtl()).hasMinutes(2);
+			assertThat(cache.achievementsTtl()).hasMinutes(10);
+			assertThat(cache.schemaTtl()).hasHours(24);
+			assertThat(cache.newsTtl()).hasMinutes(10);
+		});
+	}
+
 }

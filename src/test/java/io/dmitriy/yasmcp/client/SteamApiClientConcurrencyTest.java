@@ -38,7 +38,7 @@ class SteamApiClientConcurrencyTest {
 		SteamProperties steamProperties(@Value("${test.base-url}") URI baseUrl) {
 			var api = new SteamProperties.Api(baseUrl, "k", "76561197960287930", Duration.ofSeconds(1),
 					Duration.ofSeconds(5), 0, Duration.ofMillis(200), Duration.ofSeconds(30), 2, "english", true);
-			return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false));
+			return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
 		}
 
 		@Bean

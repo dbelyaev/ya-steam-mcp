@@ -21,7 +21,7 @@ public final class TestProperties {
 		var api = new SteamProperties.Api(URI.create("https://api.steampowered.com"), key, steamId,
 				Duration.ofSeconds(3), Duration.ofSeconds(10), 2, Duration.ofMillis(200), Duration.ofSeconds(30), 4,
 				"english", false);
-		return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false));
+		return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
 	}
 
 }

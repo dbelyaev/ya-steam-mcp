@@ -2,6 +2,7 @@ package io.dmitriy.yasmcp.config;
 
 import java.time.Clock;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.boot.http.client.HttpRedirects;
@@ -14,6 +15,9 @@ import org.springframework.web.client.support.RestClientHttpServiceGroupConfigur
 import org.springframework.web.service.registry.HttpServiceProxyRegistry;
 import org.springframework.web.service.registry.ImportHttpServices;
 
+import com.github.benmanes.caffeine.cache.Ticker;
+
+import io.dmitriy.yasmcp.client.CachedSteamApiClient;
 import io.dmitriy.yasmcp.client.ConcurrencyLimitedSteamWebApi;
 import io.dmitriy.yasmcp.client.SteamApiClient;
 import io.dmitriy.yasmcp.client.SteamApiClientImpl;
@@ -58,9 +62,18 @@ public class SteamHttpConfig {
 		return new ConcurrencyLimitedSteamWebApi(registry.getClient(SteamWebApi.class));
 	}
 
+	/** The retrying HTTP client. Must stay a bean of its own so {@code @Retryable} is applied to it. */
 	@Bean
-	SteamApiClient steamApiClient(SteamProperties properties, SteamWebApi steamWebApi, JsonMapper jsonMapper) {
+	SteamApiClient steamApiClientDelegate(SteamProperties properties, SteamWebApi steamWebApi, JsonMapper jsonMapper) {
 		return new SteamApiClientImpl(properties, steamWebApi, jsonMapper);
+	}
+
+	/** What services inject: the cache in front of the retrying client. */
+	@Bean
+	@Primary
+	SteamApiClient steamApiClient(@Qualifier("steamApiClientDelegate") SteamApiClient delegate,
+			SteamProperties properties) {
+		return new CachedSteamApiClient(delegate, properties, Ticker.systemTicker());
 	}
 
 }

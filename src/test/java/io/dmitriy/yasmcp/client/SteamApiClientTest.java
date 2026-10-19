@@ -79,7 +79,7 @@ class SteamApiClientTest {
 	private SteamApiClient client(int retries, Duration readTimeout, Duration totalTimeout, String key) {
 		var api = new SteamProperties.Api(URI.create("http://localhost:" + server.port()), key, STEAM_ID,
 				Duration.ofSeconds(1), readTimeout, retries, Duration.ofMillis(1), totalTimeout, 4, "english", true);
-		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false));
+		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
 		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();
 		SteamWebApi webApi = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rc)).build()
 			.createClient(SteamWebApi.class);
