@@ -14,7 +14,7 @@ import io.dmitriy.yasmcp.model.SteamException;
 class SteamIdValidatorTest {
 
 	@Test
-	void acceptsSeventeenDigitsUnchanged() {
+	void requireValid_withSeventeenDigits_shouldReturnUnchanged() {
 		assertThat(SteamIdValidator.requireValid("76561197960287930")).isEqualTo("76561197960287930");
 	}
 
@@ -22,14 +22,14 @@ class SteamIdValidatorTest {
 	@NullAndEmptySource
 	@ValueSource(strings = { "7656119796028793", "765611979602879301", "7656119796028793a", " 76561197960287930",
 			"-6561197960287930", "7656119796028793.", "7656119796028793e" })
-	void rejectsMalformed(String value) {
+	void requireValid_withMalformedValue_shouldThrowInvalidArgument(String value) {
 		assertThat(SteamIdValidator.isValid(value)).isFalse();
 		assertThatThrownBy(() -> SteamIdValidator.requireValid(value)).isInstanceOfSatisfying(SteamException.class,
 				ex -> assertThat(ex.code()).isEqualTo(ErrorCode.INVALID_ARGUMENT));
 	}
 
 	@Test
-	void errorMessageDoesNotEchoValue() {
+	void requireValid_withBadValue_shouldNotEchoValue() {
 		assertThatThrownBy(() -> SteamIdValidator.requireValid("secret-value-x")).hasMessageNotContaining("secret");
 	}
 

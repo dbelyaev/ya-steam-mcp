@@ -23,7 +23,7 @@ class ToolResultsTest {
 	}
 
 	@Test
-	void successIsNotError() {
+	void run_whenActionSucceeds_shouldReturnNonErrorEnvelope() {
 		var r = results.run(() -> new ToolResponse<>(Map.of("a", 1),
 				ToolResponse.Meta.of(Instant.parse("2026-10-19T18:00:00Z"), false, false, List.of())));
 		assertThat(r.isError()).isFalse();
@@ -33,7 +33,7 @@ class ToolResultsTest {
 	}
 
 	@Test
-	void steamExceptionBecomesErrorEnvelope() {
+	void run_whenSteamException_shouldReturnErrorEnvelope() {
 		var r = results.run(() -> {
 			throw new SteamException(ErrorCode.UPSTREAM_UNAVAILABLE, "Steam API is temporarily unavailable");
 		});
@@ -43,7 +43,7 @@ class ToolResultsTest {
 	}
 
 	@Test
-	void unexpectedExceptionNeverLeaksMessage() {
+	void run_whenUnexpectedException_shouldNotLeakMessage() {
 		var r = results.run(() -> {
 			throw new IllegalStateException("GET https://api.steampowered.com/x?key=SECRET123 failed");
 		});

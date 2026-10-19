@@ -11,7 +11,7 @@ class SteamDtoDeserializationTest {
 	private final JsonMapper mapper = JsonMapper.builder().build();
 
 	@Test
-	void ownedGamesToleratesUnknownAndMissingFields() {
+	void ownedGames_withUnknownAndMissingFields_shouldDeserialize() {
 		var r = mapper.readValue("""
 				{"response":{"game_count":2,"future_field":1,"games":[
 				 {"appid":620,"name":"Portal 2","playtime_forever":740,"img_icon_url":"abc","new_thing":true},
@@ -23,19 +23,19 @@ class SteamDtoDeserializationTest {
 	}
 
 	@Test
-	void ownedGamesEmptyResponseObjectHasNoGames() {
+	void ownedGames_whenResponseEmptyObject_shouldHaveNullGames() {
 		var r = mapper.readValue("{\"response\":{}}", OwnedGamesResponse.class);
 		assertThat(r.response()).isNotNull();
 		assertThat(r.response().games()).isNull();
 	}
 
 	@Test
-	void missingEnvelopeIsNull() {
+	void ownedGames_whenEnvelopeMissing_shouldHaveNullResponse() {
 		assertThat(mapper.readValue("{}", OwnedGamesResponse.class).response()).isNull();
 	}
 
 	@Test
-	void recentlyPlayed() {
+	void recentlyPlayed_withGames_shouldMapPlaytime() {
 		var r = mapper.readValue("""
 				{"response":{"total_count":1,"games":[{"appid":620,"name":"Portal 2","playtime_2weeks":55,"playtime_forever":740}]}}""",
 				RecentlyPlayedResponse.class);
@@ -43,7 +43,7 @@ class SteamDtoDeserializationTest {
 	}
 
 	@Test
-	void achievementsFailureShape() {
+	void achievements_whenSuccessFalse_shouldExposeNoAchievements() {
 		var r = mapper.readValue("""
 				{"playerstats":{"error":"Requested app has no stats","success":false}}""",
 				PlayerAchievementsResponse.class);
@@ -52,7 +52,7 @@ class SteamDtoDeserializationTest {
 	}
 
 	@Test
-	void achievementsSuccessShape() {
+	void achievements_whenSuccess_shouldMapFields() {
 		var r = mapper.readValue("""
 				{"playerstats":{"steamID":"76561197960287930","gameName":"X","success":true,
 				 "achievements":[{"apiname":"ACH_1","achieved":1,"unlocktime":1735732800}]}}""",
@@ -62,7 +62,7 @@ class SteamDtoDeserializationTest {
 	}
 
 	@Test
-	void schema() {
+	void schema_withAchievements_shouldMapDisplayName() {
 		var r = mapper.readValue("""
 				{"game":{"gameName":"X","availableGameStats":{"achievements":[
 				 {"name":"ACH_1","displayName":"First","hidden":0,"description":"d","icon":"i"}]}}}""",
@@ -71,7 +71,7 @@ class SteamDtoDeserializationTest {
 	}
 
 	@Test
-	void news() {
+	void news_withItem_shouldMapEpochDate() {
 		var r = mapper.readValue("""
 				{"appnews":{"appid":620,"count":1,"newsitems":[
 				 {"gid":"1","title":"T","url":"https://x","is_external_url":true,"author":"a","contents":"<b>c</b>","date":1759314600}]}}""",

@@ -14,7 +14,7 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 class WireMockSmokeTest {
 
 	@Test
-	void wireMockServesStubUnderBootManagedJetty() {
+	void stub_underBootManagedJetty_shouldServeResponse() {
 		WireMockServer server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
 		server.start();
 		try {
