@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.dmitriy.yasmcp.model.Achievement;
 import io.dmitriy.yasmcp.model.AchievementList;
 import io.dmitriy.yasmcp.model.ErrorCode;
+import io.dmitriy.yasmcp.model.GameDetails;
 import io.dmitriy.yasmcp.model.GameNews;
 import io.dmitriy.yasmcp.model.GameSummary;
 import io.dmitriy.yasmcp.model.LibraryPage;
@@ -29,6 +30,7 @@ import io.dmitriy.yasmcp.model.Result;
 import io.dmitriy.yasmcp.model.SteamException;
 import io.dmitriy.yasmcp.model.VisibilityStatus;
 import io.dmitriy.yasmcp.service.AchievementService;
+import io.dmitriy.yasmcp.service.GameDetailsService;
 import io.dmitriy.yasmcp.service.LibraryService;
 import io.dmitriy.yasmcp.service.NewsService;
 import io.dmitriy.yasmcp.service.RecentGamesService;
@@ -56,12 +58,15 @@ class SteamToolsTest {
 	@Mock
 	NewsService newsService;
 
+	@Mock
+	GameDetailsService gameDetailsService;
+
 	SteamTools tools;
 
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-10-19T18:00:00Z"), ZoneOffset.UTC);
-		tools = new SteamTools(libraryService, recentGamesService, achievementService, newsService, new ToolResults(mapper), clock);
+		tools = new SteamTools(libraryService, recentGamesService, achievementService, newsService, gameDetailsService, new ToolResults(mapper), clock);
 	}
 
 	private JsonNode json(CallToolResult result) {
@@ -260,6 +265,44 @@ class SteamToolsTest {
 		// Then
 		assertThat(result.isError()).isTrue();
 		assertThat(json(result).at("/error/code").asString()).isEqualTo("INVALID_ARGUMENT");
+	}
+
+	@Test
+	void getGameDetails_whenNotOwned_shouldExposePartialMetaAndNullStoreFields() {
+		// Given
+		var details = new GameDetails(620, "Portal 2", "https://store.steampowered.com/app/620/", null, false, null, 51,
+				null, null, null, List.of("GetSchemaForGame"));
+		when(gameDetailsService.getDetails(620L, null)).thenReturn(
+				new Result<>(details, true, List.of("The game is not in the visible library; playtime and ownership are unknown")));
+
+		// When
+		var result = tools.getGameDetails(620L, null);
+
+		// Then
+		assertThat(result.isError()).isFalse();
+		JsonNode body = json(result);
+		assertThat(body.at("/meta/partial").asBoolean()).isTrue();
+		assertThat(body.at("/data/ownedOrVisibleInLibrary").asBoolean()).isFalse();
+		assertThat(body.at("/data/achievementCount").asInt()).isEqualTo(51);
+		assertThat(body.at("/data/description").isNull()).isTrue();
+		assertThat(body.at("/data/genres").isNull()).isTrue();
+		assertThat(body.at("/data/releaseDate").isNull()).isTrue();
+		assertThat(body.at("/data/sources/0").asString()).isEqualTo("GetSchemaForGame");
+	}
+
+	@Test
+	void getGameDetails_whenNoSourceKnowsGame_shouldReturnDetailsUnavailableError() {
+		// Given
+		when(gameDetailsService.getDetails(999L, "english"))
+			.thenThrow(new SteamException(ErrorCode.GAME_DETAILS_UNAVAILABLE, "No details are available"));
+
+		// When
+		var result = tools.getGameDetails(999L, "english");
+
+		// Then
+		assertThat(result.isError()).isTrue();
+		assertThat(json(result).at("/error/code").asString()).isEqualTo("GAME_DETAILS_UNAVAILABLE");
+		assertThat(json(result).at("/error/retryable").asBoolean()).isFalse();
 	}
 
 }

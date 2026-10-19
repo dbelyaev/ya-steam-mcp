@@ -37,12 +37,13 @@ class SteamToolsContractTest {
 	}
 
 	@Test
-	void listTools_shouldExposeCoreToolsWithReadOnlyHints() {
+	void listTools_shouldExposeExactlyTheSixMvpToolsWithReadOnlyHints() {
 		// When
 		var tools = server.listTools();
 
 		// Then
-		assertThat(tools).extracting(Tool::name).contains("get_library", "get_playtime", "get_recent_games");
+		assertThat(tools).extracting(Tool::name).containsExactlyInAnyOrder("get_library", "get_game_details", "get_playtime",
+				"get_achievements", "get_recent_games", "get_game_news");
 		tools.forEach(t -> {
 			assertThat(t.annotations().readOnlyHint()).as(t.name()).isTrue();
 			assertThat(t.annotations().destructiveHint()).as(t.name()).isFalse();
@@ -107,6 +108,16 @@ class SteamToolsContractTest {
 		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
 		assertThat(property(tool, "maxContentChars").get("type")).isEqualTo("integer");
 		assertThat(tool.description()).contains("untrusted");
+	}
+
+	@Test
+	void getGameDetails_inputSchema_shouldRequireAppidAndOfferLanguage() {
+		// When
+		Tool tool = tool("get_game_details");
+
+		// Then
+		assertThat(required(tool)).containsExactly("appid");
+		assertThat(property(tool, "language").get("type")).isEqualTo("string");
 	}
 
 }

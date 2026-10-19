@@ -8,6 +8,7 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
 
 import io.dmitriy.yasmcp.service.AchievementService;
+import io.dmitriy.yasmcp.service.GameDetailsService;
 import io.dmitriy.yasmcp.service.LibraryService;
 import io.dmitriy.yasmcp.service.NewsService;
 import io.dmitriy.yasmcp.service.RecentGamesService;
@@ -29,16 +30,19 @@ final class SteamTools {
 
 	private final NewsService newsService;
 
+	private final GameDetailsService gameDetailsService;
+
 	private final ToolResults results;
 
 	private final Clock clock;
 
 	SteamTools(LibraryService libraryService, RecentGamesService recentGamesService,
-			AchievementService achievementService, NewsService newsService, ToolResults results, Clock clock) {
+			AchievementService achievementService, NewsService newsService, GameDetailsService gameDetailsService, ToolResults results, Clock clock) {
 		this.libraryService = libraryService;
 		this.recentGamesService = recentGamesService;
 		this.achievementService = achievementService;
 		this.newsService = newsService;
+		this.gameDetailsService = gameDetailsService;
 		this.results = results;
 		this.clock = clock;
 	}
@@ -95,6 +99,16 @@ final class SteamTools {
 			@McpToolParam(description = "Maximum characters of plain-text content per item, 0-4000; 0 omits the body; default 1200", required = false) @Nullable Integer maxContentChars) {
 		return results.run("get_game_news",
 				() -> ToolResponse.of(newsService.getNews(appid, limit, maxContentChars), clock.instant()));
+	}
+
+	@McpTool(name = "get_game_details",
+			description = "Show available basic Steam game metadata without assuming a complete Steam Store catalog.",
+			annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true, openWorldHint = true))
+	CallToolResult getGameDetails(
+			@McpToolParam(description = "Steam AppID, integer 1-4294967295", required = true) @Nullable Long appid,
+			@McpToolParam(description = "Steam language identifier such as english, russian or norwegian; default english", required = false) @Nullable String language) {
+		return results.run("get_game_details",
+				() -> ToolResponse.of(gameDetailsService.getDetails(appid, language), clock.instant()));
 	}
 
 }
