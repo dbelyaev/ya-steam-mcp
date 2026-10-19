@@ -1,5 +1,5 @@
 # Status
-- Done: P0 bootstrap; P1 Steam client; P1R skill alignment (key redaction, Jakarta validation, @NullMarked + NullAway, test names, Mockito agent, tool logging, total-timeout + @ConcurrencyLimit, declarative SteamWebApi).
+- Done: P0; P1; P1R (all items incl. both spikes). Client now uses `@Retryable` (I/O + 5xx only, 429 fails fast) with concurrency limit below it (D11, D11a); declarative `SteamWebApi` (D12). Spec bumped to v1.3.
 - Next: P2 core tools (LibraryService, get_library, get_playtime, get_recent_games). Waiting for go.
 - Blockers: none.
-- Notes: `SteamException(ErrorCode, msg)` in `model/` is the single public failure type. NullAway enforced on main sources (tests excluded). Decisions D11 (keep custom retry loop) and D12 (declarative client) recorded.
+- Notes: NullAway on main and tests. 88 tests.

@@ -1,8 +1,9 @@
 # Steam MCP Server — Implementation Specification
 
-> **Status:** Implementation-ready draft · **Document version:** 1.2 (English edition) · **Date:** 2026-10-19  
+> **Status:** Implementation-ready draft · **Document version:** 1.3 (English edition) · **Date:** 2026-10-19  
 > **Project:** `steam-mcp-server` · **Language:** Java · **Framework:** Spring Boot  
 > **Purpose:** Provide autonomous coding agents with a single, authoritative source of implementation requirements.  
+> **Change from v1.2:** Section 8 retry policy now uses Framework 7 `@Retryable`; 429 is not retried and `Retry-After` is not honored (decision D11).  
 > **Change from v1.1:** Documentation language changed to English; JDK 25 LTS and all functional requirements remain unchanged.
 
 ## 0. Instructions for Implementing Agents (Read First)
@@ -596,7 +597,7 @@ Output `data`:
 | Steam returns 5xx, or connection/timeout failure | `UPSTREAM_UNAVAILABLE` | true |
 | Unexpected or malformed JSON | `UPSTREAM_BAD_RESPONSE` | false |
 
-**Outbound request policy:** Connect timeout 3 seconds, response timeout 10 seconds, and at most 2 retries **only** for network failures, 5xx, and 429. Use exponential backoff with jitter and honor `Retry-After` when supplied. Bound concurrency (for example, at most 4 concurrent outbound requests) and use endpoint-specific caching.
+**Outbound request policy:** Connect timeout 3 seconds, response timeout 10 seconds, and at most 2 retries **only** for network failures and 5xx, using Spring Framework 7 `@Retryable` with exponential backoff and jitter and an overall deadline (`steam.api.total-timeout`). HTTP 429 is **not** retried by the server: it returns `UPSTREAM_RATE_LIMITED` (`retryable=true`) immediately and `Retry-After` is ignored; the calling agent decides whether to retry. Bound concurrency (at most 4 concurrent outbound requests, `@ConcurrencyLimit`, applied per attempt below the retry) and use endpoint-specific caching.
 
 **Cache TTLs (configurable initial values):**
 
