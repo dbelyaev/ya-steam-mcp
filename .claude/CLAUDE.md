@@ -2,9 +2,14 @@
 
 ## Stack
 
-- Spring Boot 4.x, Spring Framework 7, Java 21
+- Spring Boot 4.1.1, Spring Framework 7, Java 25 (`java.version` in `pom.xml`)
 - Jakarta EE 11, Jackson 3, and Boot 4 modular starters
 - Build with the checked-in Maven wrapper
+
+## Current State
+
+- Fresh scaffold: single `YasmcpApplication` (package `io.dmitriy.yasmcp`), one context-load test, and only `spring-boot-starter` + `spring-boot-starter-test` dependencies. No web, MCP, or persistence layers exist yet.
+- Add starters to `pom.xml` as features land; use the `mcp-server` skill when exposing MCP tools/resources/prompts.
 
 ## Commands
 
