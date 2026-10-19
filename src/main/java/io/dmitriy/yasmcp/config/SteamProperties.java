@@ -41,6 +41,16 @@ public record SteamProperties(@DefaultValue Api api, @DefaultValue Library libra
 			}
 		}
 
+		/** Generated record toString would print the key and SteamID; both must stay out of logs. */
+		@Override
+		public String toString() {
+			return "Api[baseUrl=" + baseUrl + ", key=" + (key == null || key.isBlank() ? "<unset>" : "<redacted>")
+					+ ", steamId=" + (steamId == null || steamId.isBlank() ? "<unset>" : "<redacted>")
+					+ ", connectTimeout=" + connectTimeout + ", readTimeout=" + readTimeout + ", retries=" + retries
+					+ ", defaultLanguage=" + defaultLanguage + ", allowInsecureTestBaseUrl=" + allowInsecureTestBaseUrl
+					+ "]";
+		}
+
 		public String requireKey() {
 			if (key == null || key.isBlank()) {
 				throw new SteamException(ErrorCode.CONFIGURATION_MISSING,

@@ -86,4 +86,18 @@ class SteamPropertiesTest {
 		runner.withPropertyValues(property).run(ctx -> assertThat(ctx).hasFailed());
 	}
 
+	@Test
+	void toString_withCredentials_shouldNotContainKeyOrSteamId() {
+		// Given
+		runner.withPropertyValues("steam.api.steam-id=76561197960287930", "steam.api.key=SECRETKEY123").run(ctx -> {
+			var props = ctx.getBean(SteamProperties.class);
+
+			// When
+			String text = props.toString() + props.api();
+
+			// Then
+			assertThat(text).doesNotContain("SECRETKEY123").doesNotContain("76561197960287930").contains("<redacted>");
+		});
+	}
+
 }
