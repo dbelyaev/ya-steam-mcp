@@ -18,8 +18,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.dmitriy.yasmcp.model.Achievement;
 import io.dmitriy.yasmcp.model.AchievementList;
 import io.dmitriy.yasmcp.model.ErrorCode;
+import io.dmitriy.yasmcp.model.GameNews;
 import io.dmitriy.yasmcp.model.GameSummary;
 import io.dmitriy.yasmcp.model.LibraryPage;
+import io.dmitriy.yasmcp.model.NewsItem;
 import io.dmitriy.yasmcp.model.Playtime;
 import io.dmitriy.yasmcp.model.RecentGame;
 import io.dmitriy.yasmcp.model.RecentGames;
@@ -28,6 +30,7 @@ import io.dmitriy.yasmcp.model.SteamException;
 import io.dmitriy.yasmcp.model.VisibilityStatus;
 import io.dmitriy.yasmcp.service.AchievementService;
 import io.dmitriy.yasmcp.service.LibraryService;
+import io.dmitriy.yasmcp.service.NewsService;
 import io.dmitriy.yasmcp.service.RecentGamesService;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
@@ -50,12 +53,15 @@ class SteamToolsTest {
 	@Mock
 	AchievementService achievementService;
 
+	@Mock
+	NewsService newsService;
+
 	SteamTools tools;
 
 	@BeforeEach
 	void setUp() {
 		var clock = Clock.fixed(Instant.parse("2026-10-19T18:00:00Z"), ZoneOffset.UTC);
-		tools = new SteamTools(libraryService, recentGamesService, achievementService, new ToolResults(mapper), clock);
+		tools = new SteamTools(libraryService, recentGamesService, achievementService, newsService, new ToolResults(mapper), clock);
 	}
 
 	private JsonNode json(CallToolResult result) {
@@ -222,6 +228,38 @@ class SteamToolsTest {
 		assertThat(result.isError()).isTrue();
 		assertThat(json(result).at("/error/code").asString()).isEqualTo("ACHIEVEMENTS_UNAVAILABLE");
 		assertThat(json(result).has("data")).isFalse();
+	}
+
+	@Test
+	void getGameNews_withItems_shouldWrapPlainTextItemsWithIsoDate() {
+		// Given
+		var item = new NewsItem("gid", "Update", "https://store.steampowered.com/news/1",
+				Instant.parse("2026-10-01T10:30:00Z"), null, "Short plain-text preview");
+		when(newsService.getNews(620L, 3, 200)).thenReturn(Result.complete(new GameNews(620, List.of(item))));
+
+		// When
+		var result = tools.getGameNews(620L, 3, 200);
+
+		// Then
+		assertThat(result.isError()).isFalse();
+		JsonNode body = json(result);
+		assertThat(body.at("/data/items/0/publishedAt").asString()).isEqualTo("2026-10-01T10:30:00Z");
+		assertThat(body.at("/data/items/0/contentPreview").asString()).isEqualTo("Short plain-text preview");
+		assertThat(body.at("/data/items/0/author").isNull()).isTrue();
+	}
+
+	@Test
+	void getGameNews_withInvalidLimit_shouldReturnInvalidArgumentEnvelope() {
+		// Given
+		when(newsService.getNews(620L, 99, null))
+			.thenThrow(new SteamException(ErrorCode.INVALID_ARGUMENT, "limit must be between 1 and 20"));
+
+		// When
+		var result = tools.getGameNews(620L, 99, null);
+
+		// Then
+		assertThat(result.isError()).isTrue();
+		assertThat(json(result).at("/error/code").asString()).isEqualTo("INVALID_ARGUMENT");
 	}
 
 }

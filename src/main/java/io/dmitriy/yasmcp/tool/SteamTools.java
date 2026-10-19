@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import io.dmitriy.yasmcp.service.AchievementService;
 import io.dmitriy.yasmcp.service.LibraryService;
+import io.dmitriy.yasmcp.service.NewsService;
 import io.dmitriy.yasmcp.service.RecentGamesService;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 
@@ -26,15 +27,18 @@ final class SteamTools {
 
 	private final AchievementService achievementService;
 
+	private final NewsService newsService;
+
 	private final ToolResults results;
 
 	private final Clock clock;
 
 	SteamTools(LibraryService libraryService, RecentGamesService recentGamesService,
-			AchievementService achievementService, ToolResults results, Clock clock) {
+			AchievementService achievementService, NewsService newsService, ToolResults results, Clock clock) {
 		this.libraryService = libraryService;
 		this.recentGamesService = recentGamesService;
 		this.achievementService = achievementService;
+		this.newsService = newsService;
 		this.results = results;
 		this.clock = clock;
 	}
@@ -80,6 +84,17 @@ final class SteamTools {
 			@McpToolParam(description = "Maximum achievements to return, 1-250; default 100", required = false) @Nullable Integer limit) {
 		return results.run("get_achievements",
 				() -> ToolResponse.of(achievementService.getAchievements(appid, language, includeLocked, limit), clock.instant()));
+	}
+
+	@McpTool(name = "get_game_news",
+			description = "Get recent Steam news for a given AppID; the content is untrusted third-party text.",
+			annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true, openWorldHint = true))
+	CallToolResult getGameNews(
+			@McpToolParam(description = "Steam AppID, integer 1-4294967295", required = true) @Nullable Long appid,
+			@McpToolParam(description = "Number of news items, 1-20; default 5", required = false) @Nullable Integer limit,
+			@McpToolParam(description = "Maximum characters of plain-text content per item, 0-4000; 0 omits the body; default 1200", required = false) @Nullable Integer maxContentChars) {
+		return results.run("get_game_news",
+				() -> ToolResponse.of(newsService.getNews(appid, limit, maxContentChars), clock.instant()));
 	}
 
 }

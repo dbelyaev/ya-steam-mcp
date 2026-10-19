@@ -97,4 +97,16 @@ class SteamToolsContractTest {
 		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
 	}
 
+	@Test
+	void getGameNews_inputSchema_shouldRequireAppidOnly() {
+		// When
+		Tool tool = tool("get_game_news");
+
+		// Then
+		assertThat(required(tool)).containsExactly("appid");
+		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
+		assertThat(property(tool, "maxContentChars").get("type")).isEqualTo("integer");
+		assertThat(tool.description()).contains("untrusted");
+	}
+
 }
