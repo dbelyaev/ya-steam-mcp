@@ -6,17 +6,16 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.resilience.annotation.ConcurrencyLimit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClient;
 
 import io.dmitriy.yasmcp.config.SteamProperties;
 import io.dmitriy.yasmcp.model.ErrorCode;
@@ -49,7 +48,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 
 	private final boolean includePlayedFreeGames;
 
-	private final RestClient restClient;
+	private final SteamWebApi webApi;
 
 	private final JsonMapper jsonMapper;
 
@@ -57,11 +56,11 @@ public class SteamApiClientImpl implements SteamApiClient {
 
 	private final Clock clock;
 
-	public SteamApiClientImpl(SteamProperties properties, RestClient restClient, JsonMapper jsonMapper, Sleeper sleeper,
+	public SteamApiClientImpl(SteamProperties properties, SteamWebApi webApi, JsonMapper jsonMapper, Sleeper sleeper,
 			Clock clock) {
 		this.api = properties.api();
 		this.includePlayedFreeGames = properties.library().includePlayedFreeGames();
-		this.restClient = restClient;
+		this.webApi = webApi;
 		this.jsonMapper = jsonMapper;
 		this.sleeper = sleeper;
 		this.clock = clock;
@@ -69,64 +68,46 @@ public class SteamApiClientImpl implements SteamApiClient {
 
 	@Override
 	public OwnedGamesResponse getOwnedGames() {
-		Map<String, Object> params = keyed();
-		params.put("include_appinfo", true);
-		params.put("include_played_free_games", includePlayedFreeGames);
-		return get("GetOwnedGames", "/IPlayerService/GetOwnedGames/v1/", params, OwnedGamesResponse.class,
-				OwnedGamesResponse::response);
+		String key = api.requireKey();
+		String steamId = api.requireSteamId();
+		return get("GetOwnedGames", () -> webApi.getOwnedGames(key, steamId, true, includePlayedFreeGames),
+				OwnedGamesResponse.class, OwnedGamesResponse::response);
 	}
 
 	@Override
 	public RecentlyPlayedResponse getRecentlyPlayedGames(int count) {
-		Map<String, Object> params = keyed();
-		params.put("count", count);
-		return get("GetRecentlyPlayedGames", "/IPlayerService/GetRecentlyPlayedGames/v1/", params,
+		String key = api.requireKey();
+		String steamId = api.requireSteamId();
+		return get("GetRecentlyPlayedGames", () -> webApi.getRecentlyPlayedGames(key, steamId, count),
 				RecentlyPlayedResponse.class, RecentlyPlayedResponse::response);
 	}
 
 	@Override
 	public PlayerAchievementsResponse getPlayerAchievements(long appid, String language) {
-		Map<String, Object> params = keyed();
-		params.put("appid", appid);
-		params.put("l", language);
-		return get("GetPlayerAchievements", "/ISteamUserStats/GetPlayerAchievements/v1/", params,
+		String key = api.requireKey();
+		String steamId = api.requireSteamId();
+		return get("GetPlayerAchievements", () -> webApi.getPlayerAchievements(key, steamId, appid, language),
 				PlayerAchievementsResponse.class, PlayerAchievementsResponse::playerstats);
 	}
 
 	@Override
 	public GameSchemaResponse getSchemaForGame(long appid, String language) {
-		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("key", api.requireKey());
-		params.put("appid", appid);
-		params.put("l", language);
-		return get("GetSchemaForGame", "/ISteamUserStats/GetSchemaForGame/v2/", params, GameSchemaResponse.class,
+		String key = api.requireKey();
+		return get("GetSchemaForGame", () -> webApi.getSchemaForGame(key, appid, language), GameSchemaResponse.class,
 				GameSchemaResponse::game);
 	}
 
 	@Override
 	public NewsResponse getNewsForApp(long appid, int count, @Nullable Integer maxLength) {
-		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("appid", appid);
-		params.put("count", count);
-		if (maxLength != null) {
-			params.put("maxlength", maxLength);
-		}
-		return get("GetNewsForApp", "/ISteamNews/GetNewsForApp/v2/", params, NewsResponse.class,
+		return get("GetNewsForApp", () -> webApi.getNewsForApp(appid, count, maxLength), NewsResponse.class,
 				NewsResponse::appnews);
 	}
 
-	private Map<String, Object> keyed() {
-		Map<String, Object> params = new LinkedHashMap<>();
-		params.put("key", api.requireKey());
-		params.put("steamid", api.requireSteamId());
-		return params;
-	}
-
-	private <T> T get(String endpoint, String path, Map<String, Object> params, Class<T> type,
+	private <T> T get(String endpoint, Supplier<ResponseEntity<byte[]>> call, Class<T> type,
 			Function<T, @Nullable Object> envelope) {
 		long deadlineNanos = System.nanoTime() + api.totalTimeout().toNanos();
 		for (int attempt = 0;; attempt++) {
-			Outcome outcome = attempt(endpoint, path, params);
+			Outcome outcome = attempt(endpoint, call);
 			if (outcome.status() >= 200 && outcome.status() < 300 || outcome.status() == 400) {
 				return parse(outcome.body(), type, envelope);
 			}
@@ -146,14 +127,11 @@ public class SteamApiClientImpl implements SteamApiClient {
 	}
 
 	/** One HTTP round trip. Never throws for upstream status; I/O failure becomes status {@code -1}. */
-	private Outcome attempt(String endpoint, String path, Map<String, Object> params) {
+	private Outcome attempt(String endpoint, Supplier<ResponseEntity<byte[]>> call) {
 		try {
-			return restClient.get().uri(uriBuilder -> {
-				uriBuilder.path(path);
-				params.keySet().forEach(name -> uriBuilder.queryParam(name, "{" + name + "}"));
-				return uriBuilder.build(params);
-			}).exchange((request, response) -> new Outcome(response.getStatusCode().value(),
-					response.getHeaders().getFirst("Retry-After"), readBounded(response.getBody())));
+			ResponseEntity<byte[]> response = call.get();
+			return new Outcome(response.getStatusCode().value(), response.getHeaders().getFirst("Retry-After"),
+					bounded(response.getBody()));
 		}
 		catch (ResourceAccessException ex) {
 			// message contains the request URI incl. key: log only the exception class
@@ -166,9 +144,8 @@ public class SteamApiClientImpl implements SteamApiClient {
 		}
 	}
 
-	private static byte @Nullable [] readBounded(java.io.InputStream in) throws IOException {
-		byte[] body = in.readNBytes(MAX_BODY_BYTES + 1);
-		return body.length > MAX_BODY_BYTES ? null : body;
+	private static byte @Nullable [] bounded(byte @Nullable [] body) {
+		return body != null && body.length > MAX_BODY_BYTES ? null : body;
 	}
 
 	private <T> T parse(byte @Nullable [] body, Class<T> type, Function<T, @Nullable Object> envelope) {

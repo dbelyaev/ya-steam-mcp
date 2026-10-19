@@ -22,6 +22,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.support.RestClientAdapter;
+import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -83,8 +85,10 @@ class SteamApiClientTest {
 		var api = new SteamProperties.Api(URI.create("http://localhost:" + server.port()), key, STEAM_ID,
 				Duration.ofSeconds(1), readTimeout, retries, totalTimeout, 4, "english", true);
 		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false));
-		RestClient rc = new SteamHttpConfig().steamRestClient(RestClient.builder(), props);
-		return new SteamApiClientImpl(props, rc, JsonMapper.builder().build(), sleeps::add, CLOCK);
+		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();
+		SteamWebApi webApi = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rc)).build()
+			.createClient(SteamWebApi.class);
+		return new SteamApiClientImpl(props, webApi, JsonMapper.builder().build(), sleeps::add, CLOCK);
 	}
 
 	private SteamApiClient client(int retries) {
