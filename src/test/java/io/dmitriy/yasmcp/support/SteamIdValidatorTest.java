@@ -15,7 +15,11 @@ class SteamIdValidatorTest {
 
 	@Test
 	void requireValid_withSeventeenDigits_shouldReturnUnchanged() {
-		assertThat(SteamIdValidator.requireValid("76561197960287930")).isEqualTo("76561197960287930");
+		// When
+		String result = SteamIdValidator.requireValid("76561197960287930");
+
+		// Then
+		assertThat(result).isEqualTo("76561197960287930");
 	}
 
 	@ParameterizedTest
@@ -23,6 +27,7 @@ class SteamIdValidatorTest {
 	@ValueSource(strings = { "7656119796028793", "765611979602879301", "7656119796028793a", " 76561197960287930",
 			"-6561197960287930", "7656119796028793.", "7656119796028793e" })
 	void requireValid_withMalformedValue_shouldThrowInvalidArgument(String value) {
+		// When / Then
 		assertThat(SteamIdValidator.isValid(value)).isFalse();
 		assertThatThrownBy(() -> SteamIdValidator.requireValid(value)).isInstanceOfSatisfying(SteamException.class,
 				ex -> assertThat(ex.code()).isEqualTo(ErrorCode.INVALID_ARGUMENT));
@@ -30,6 +35,7 @@ class SteamIdValidatorTest {
 
 	@Test
 	void requireValid_withBadValue_shouldNotEchoValue() {
+		// When / Then
 		assertThatThrownBy(() -> SteamIdValidator.requireValid("secret-value-x")).hasMessageNotContaining("secret");
 	}
 

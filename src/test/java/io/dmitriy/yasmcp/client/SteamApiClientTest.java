@@ -6,6 +6,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -111,13 +112,17 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_withKeyAndSteamId_shouldCallPublicPathWithParams() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/")).willReturn(json(200,
 				"{\"response\":{\"game_count\":2,\"games\":[{\"appid\":620,\"name\":\"Portal 2\",\"playtime_forever\":740},{\"appid\":10}]}}")));
 
+		// When
 		var r = client(2).getOwnedGames();
 
-		assertThat(r.response().games()).hasSize(2);
-		assertThat(r.response().games().getFirst().playtimeForever()).isEqualTo(740);
+		// Then
+		var games = requireNonNull(requireNonNull(r.response()).games());
+		assertThat(games).hasSize(2);
+		assertThat(games.getFirst().playtimeForever()).isEqualTo(740);
 		server.verify(1, getRequestedFor(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
 			.withQueryParam("key", equalTo(KEY))
 			.withQueryParam("steamid", equalTo(STEAM_ID))
@@ -128,22 +133,35 @@ class SteamApiClientTest {
 
 	@Test
 	void getRecentlyPlayedGames_withCount_shouldSendCountParam() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetRecentlyPlayedGames/v1/"))
 			.willReturn(json(200, "{\"response\":{\"total_count\":0}}")));
-		assertThat(client(2).getRecentlyPlayedGames(7).response().totalCount()).isZero();
+
+		// When
+		var r = client(2).getRecentlyPlayedGames(7);
+
+		// Then
+		assertThat(requireNonNull(r.response()).totalCount()).isZero();
 		server.verify(getRequestedFor(urlPathEqualTo("/IPlayerService/GetRecentlyPlayedGames/v1/"))
 			.withQueryParam("count", equalTo("7")).withQueryParam("steamid", equalTo(STEAM_ID)));
 	}
 
 	@Test
 	void getAchievementsAndSchema_withAppid_shouldCallPathsWithAppidAndLanguage() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/ISteamUserStats/GetPlayerAchievements/v1/")).willReturn(json(200,
 				"{\"playerstats\":{\"success\":true,\"achievements\":[{\"apiname\":\"A\",\"achieved\":1}]}}")));
 		server.stubFor(get(urlPathEqualTo("/ISteamUserStats/GetSchemaForGame/v2/"))
 			.willReturn(json(200, "{\"game\":{\"gameName\":\"X\"}}")));
 		var c = client(2);
-		assertThat(c.getPlayerAchievements(620, "english").playerstats().achievements()).hasSize(1);
-		assertThat(c.getSchemaForGame(4294967295L, "russian").game().gameName()).isEqualTo("X");
+
+		// When
+		var achievements = c.getPlayerAchievements(620, "english");
+		var schema = c.getSchemaForGame(4294967295L, "russian");
+
+		// Then
+		assertThat(requireNonNull(requireNonNull(achievements.playerstats()).achievements())).hasSize(1);
+		assertThat(requireNonNull(schema.game()).gameName()).isEqualTo("X");
 		server.verify(getRequestedFor(urlPathEqualTo("/ISteamUserStats/GetPlayerAchievements/v1/"))
 			.withQueryParam("appid", equalTo("620")).withQueryParam("l", equalTo("english"))
 			.withQueryParam("steamid", equalTo(STEAM_ID)));
@@ -154,11 +172,16 @@ class SteamApiClientTest {
 
 	@Test
 	void getNewsForApp_withoutKey_shouldOmitKeyAndHonorOptionalMaxlength() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/ISteamNews/GetNewsForApp/v2/"))
 			.willReturn(json(200, "{\"appnews\":{\"appid\":620,\"newsitems\":[]}}")));
 		var c = client(2, Duration.ofSeconds(2), "");
+
+		// When
 		c.getNewsForApp(620, 5, 1200);
 		c.getNewsForApp(620, 5, null);
+
+		// Then
 		server.verify(1, getRequestedFor(urlPathEqualTo("/ISteamNews/GetNewsForApp/v2/"))
 			.withQueryParam("maxlength", equalTo("1200")).withQueryParam("count", equalTo("5")));
 		server.verify(1, getRequestedFor(urlPathEqualTo("/ISteamNews/GetNewsForApp/v2/"))
@@ -169,7 +192,10 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_whenKeyMissing_shouldFailBeforeAnyRequest() {
+		// Given
 		var c = client(2, Duration.ofSeconds(2), "");
+
+		// When / Then
 		assertThatThrownBy(c::getOwnedGames).satisfies(ex -> assertCode(ex, ErrorCode.CONFIGURATION_MISSING));
 		assertThat(server.getAllServeEvents()).isEmpty();
 	}
@@ -178,46 +204,68 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_whenResponseEmpty_shouldReturnEmptyEnvelope() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/")).willReturn(json(200, "{\"response\":{}}")));
+
+		// When
 		var r = client(2).getOwnedGames();
-		assertThat(r.response()).isNotNull();
-		assertThat(r.response().games()).isNull();
+
+		// Then: an empty envelope is data, not proof of an empty library
+		var body = requireNonNull(r.response());
+		assertThat(body.games()).isNull();
 	}
 
 	@Test
 	void getOwnedGames_whenEnvelopeMissing_shouldThrowBadResponse() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/")).willReturn(json(200, "{}")));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
 		assertThat(server.getAllServeEvents()).hasSize(1);
 	}
 
 	@Test
 	void getOwnedGames_whenJsonMalformed_shouldThrowBadResponseWithoutBody() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
 			.willReturn(json(200, "{\"response\":" + BODY_SECRET)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
 		assertThat(sleeps).isEmpty();
 	}
 
 	@Test
 	void getOwnedGames_whenBodyEmpty_shouldThrowBadResponse() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/")).willReturn(aResponse().withStatus(200)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
 	}
 
 	@Test
 	void getPlayerAchievements_when400WithSteamBody_shouldReturnBodyToCaller() {
+		// Given: Steam reports "no stats" as HTTP 400 with a JSON body
 		server.stubFor(get(urlPathEqualTo("/ISteamUserStats/GetPlayerAchievements/v1/")).willReturn(json(400,
 				"{\"playerstats\":{\"error\":\"Requested app has no stats\",\"success\":false}}")));
+
+		// When
 		var r = client(2).getPlayerAchievements(620, "english");
-		assertThat(r.playerstats().success()).isFalse();
+
+		// Then
+		assertThat(requireNonNull(r.playerstats()).success()).isFalse();
 		assertThat(server.getAllServeEvents()).hasSize(1);
 	}
 
 	@Test
 	void getPlayerAchievements_when400WithHtml_shouldThrowBadResponse() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/ISteamUserStats/GetPlayerAchievements/v1/"))
 			.willReturn(aResponse().withStatus(400).withBody("<html>" + BODY_SECRET + "</html>")));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getPlayerAchievements(620, "english"))
 			.satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
 		assertThat(server.getAllServeEvents()).hasSize(1);
@@ -225,8 +273,11 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_whenRedirected_shouldNotFollowAndThrowBadResponse() {
+		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
 			.willReturn(aResponse().withStatus(302).withHeader("Location", "/elsewhere")));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
 		assertThat(server.getAllServeEvents()).hasSize(1);
 	}
@@ -235,7 +286,10 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_when401_shouldFailWithoutRetryOrBody() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(401).withBody(BODY_SECRET + KEY)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_AUTH_FAILED));
 		assertThat(server.getAllServeEvents()).hasSize(1);
 		assertThat(sleeps).isEmpty();
@@ -243,7 +297,10 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_when403_shouldMapToAuthFailed() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(403).withBody(BODY_SECRET)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_AUTH_FAILED));
 		assertThat(server.getAllServeEvents()).hasSize(1);
 	}
@@ -252,7 +309,10 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_when429WithRetryAfterSeconds_shouldHonorHeaderThenGiveUp() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(429).withHeader("Retry-After", "3")));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_RATE_LIMITED));
 		assertThat(server.getAllServeEvents()).hasSize(3);
 		assertThat(sleeps).containsExactly(Duration.ofSeconds(3), Duration.ofSeconds(3));
@@ -260,15 +320,21 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_when429WithRetryAfterDate_shouldSleepUntilDate() {
+		// Given: fixed clock is 18:00:00Z, header says 18:00:05
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(429)
 			.withHeader("Retry-After", "Mon, 19 Oct 2026 18:00:05 GMT")));
+
+		// When / Then
 		assertThatThrownBy(() -> client(1).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_RATE_LIMITED));
 		assertThat(sleeps).containsExactly(Duration.ofSeconds(5));
 	}
 
 	@Test
 	void getOwnedGames_when429WithRetryAfterAboveCap_shouldFailImmediately() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(429).withHeader("Retry-After", "30")));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_RATE_LIMITED));
 		assertThat(server.getAllServeEvents()).hasSize(1);
 		assertThat(sleeps).isEmpty();
@@ -278,7 +344,10 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_whenServerErrorPersists_shouldRetryTwiceWithBoundedJitter() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(503).withBody(BODY_SECRET)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 		assertThat(server.getAllServeEvents()).hasSize(3);
 		assertThat(sleeps).hasSize(2);
@@ -288,18 +357,27 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_whenServerErrorIsTransient_shouldSucceedOnRetry() {
+		// Given
 		server.stubFor(get(anyUrl()).inScenario("s").whenScenarioStateIs(Scenario.STARTED)
 			.willReturn(aResponse().withStatus(500)).willSetStateTo("ok"));
 		server.stubFor(get(anyUrl()).inScenario("s").whenScenarioStateIs("ok")
 			.willReturn(json(200, "{\"response\":{\"games\":[]}}")));
-		assertThat(client(2).getOwnedGames().response().games()).isEmpty();
+
+		// When
+		var r = client(2).getOwnedGames();
+
+		// Then
+		assertThat(requireNonNull(requireNonNull(r.response()).games())).isEmpty();
 		assertThat(server.getAllServeEvents()).hasSize(2);
 		assertThat(sleeps).hasSize(1);
 	}
 
 	@Test
 	void getOwnedGames_whenRetriesDisabled_shouldAttemptOnce() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(500)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(0).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 		assertThat(server.getAllServeEvents()).hasSize(1);
 		assertThat(sleeps).isEmpty();
@@ -309,7 +387,10 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_whenReadTimesOut_shouldRetryThenThrowUnavailable() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(json(200, "{\"response\":{}}").withFixedDelay(1500)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(1, Duration.ofMillis(300), KEY).getOwnedGames())
 			.satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 		assertThat(server.getAllServeEvents()).hasSize(2);
@@ -317,7 +398,10 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_whenConnectionReset_shouldRetryThenThrowUnavailableWithoutUri() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 		assertThat(server.getAllServeEvents()).hasSize(3);
 	}
@@ -336,7 +420,10 @@ class SteamApiClientTest {
 
 	@Test
 	void getOwnedGames_whenEmptyResponseFault_shouldThrowUnavailable() {
+		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withFault(Fault.EMPTY_RESPONSE)));
+
+		// When / Then
 		assertThatThrownBy(() -> client(0).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 	}
 

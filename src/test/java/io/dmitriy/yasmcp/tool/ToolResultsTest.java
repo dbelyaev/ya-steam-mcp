@@ -29,8 +29,14 @@ class ToolResultsTest {
 
 	@Test
 	void run_whenActionSucceeds_shouldReturnNonErrorEnvelope() {
-		var r = results.run("test_tool", () -> new ToolResponse<>(Map.of("a", 1),
-				ToolResponse.Meta.of(Instant.parse("2026-10-19T18:00:00Z"), false, false, List.of())));
+		// Given
+		var response = new ToolResponse<>(Map.of("a", 1),
+				ToolResponse.Meta.of(Instant.parse("2026-10-19T18:00:00Z"), false, false, List.of()));
+
+		// When
+		var r = results.run("test_tool", () -> response);
+
+		// Then
 		assertThat(r.isError()).isFalse();
 		assertThat(text(r)).contains("\"data\":{\"a\":1}")
 			.contains("\"fetchedAt\":\"2026-10-19T18:00:00Z\"")
@@ -39,9 +45,15 @@ class ToolResultsTest {
 
 	@Test
 	void run_whenSteamException_shouldReturnErrorEnvelope() {
+		// Given
+		var failure = new SteamException(ErrorCode.UPSTREAM_UNAVAILABLE, "Steam API is temporarily unavailable");
+
+		// When
 		var r = results.run("test_tool", () -> {
-			throw new SteamException(ErrorCode.UPSTREAM_UNAVAILABLE, "Steam API is temporarily unavailable");
+			throw failure;
 		});
+
+		// Then
 		assertThat(r.isError()).isTrue();
 		assertThat(text(r)).isEqualTo(
 				"{\"error\":{\"code\":\"UPSTREAM_UNAVAILABLE\",\"message\":\"Steam API is temporarily unavailable\",\"retryable\":true}}");
@@ -49,9 +61,15 @@ class ToolResultsTest {
 
 	@Test
 	void run_whenUnexpectedException_shouldNotLeakMessage() {
+		// Given
+		var failure = new IllegalStateException("GET https://api.steampowered.com/x?key=SECRET123 failed");
+
+		// When
 		var r = results.run("test_tool", () -> {
-			throw new IllegalStateException("GET https://api.steampowered.com/x?key=SECRET123 failed");
+			throw failure;
 		});
+
+		// Then
 		assertThat(r.isError()).isTrue();
 		assertThat(text(r)).doesNotContain("SECRET123").contains("INTERNAL_ERROR");
 	}

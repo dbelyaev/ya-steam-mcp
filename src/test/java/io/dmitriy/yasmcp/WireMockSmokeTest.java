@@ -15,12 +15,17 @@ class WireMockSmokeTest {
 
 	@Test
 	void stub_underBootManagedJetty_shouldServeResponse() {
+		// Given
 		WireMockServer server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
 		server.start();
 		try {
 			server.stubFor(get(urlEqualTo("/ping")).willReturn(ok("pong")));
+
+			// When
 			String body = RestClient.create().get().uri("http://localhost:" + server.port() + "/ping")
 					.retrieve().body(String.class);
+
+			// Then
 			assertThat(body).isEqualTo("pong");
 		}
 		finally {

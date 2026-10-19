@@ -114,19 +114,9 @@
 					<compilerArgs>
 						<arg>-XDcompilePolicy=simple</arg>
 						<arg>--should-stop=ifError=FLOW</arg>
-						<arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:JSpecifyMode=true</arg>
+						<arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:HandleTestAssertionLibraries=true</arg>
 					</compilerArgs>
 				</configuration>
-				<executions>
-					<!-- NullAway checks production code only; tests dereference DTOs after AssertJ checks -->
-					<execution>
-						<id>default-testCompile</id>
-						<configuration>
-							<annotationProcessorPaths combine.self="override"/>
-							<compilerArgs combine.self="override"/>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

@@ -25,3 +25,7 @@ Legend: **FIX** = defect vs skill, **ALIGN** = adopt skill pattern, **KEEP** = d
 | 17 | testing-pyramid | Test names do not follow `method_condition_expected`; no Given/When/Then; no Mockito unit tests yet (all P1 tests are WireMock). | tests | **ALIGN**: rename P1 tests; new service tests use `@ExtendWith(MockitoExtension.class)` over a mocked `SteamApiClient` (70% unit), WireMock for client (integration), one failsafe IT (E2E) |
 | 18 | testing-pyramid | Mockito self-attach warning on JDK 25. | `pom.xml` | **ALIGN**: Mockito agent `argLine` now (was P4) |
 | 19 | testing-pyramid | `@MockitoBean`, `@WebMvcTest`, Testcontainers, `@DataJpaTest`: no web/DB. | – | N/A |
+
+## Follow-up (2026-10-19)
+- S#10 extended: NullAway also checks test sources (`HandleTestAssertionLibraries=true`). Nullable DTO accessors are unwrapped with `Objects.requireNonNull` in tests; `AppIdValidator`/`SteamIdValidator` parameters are `@Nullable` because null is a handled input.
+- S#17 completed: every test uses Given/When/Then comments.

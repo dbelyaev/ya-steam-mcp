@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -33,10 +34,8 @@ class SteamApiClientConcurrencyTest {
 	@Import(SteamHttpConfig.class)
 	static class Cfg {
 
-		static URI baseUrl;
-
 		@Bean
-		SteamProperties steamProperties() {
+		SteamProperties steamProperties(@Value("${test.base-url}") URI baseUrl) {
 			var api = new SteamProperties.Api(baseUrl, "k", "76561197960287930", Duration.ofSeconds(1),
 					Duration.ofSeconds(5), 0, Duration.ofSeconds(30), 2, "english", true);
 			return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false));
@@ -61,10 +60,10 @@ class SteamApiClientConcurrencyTest {
 		server.start();
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(200)
 			.withHeader("Content-Type", "application/json").withBody(BODY).withFixedDelay(300)));
-		Cfg.baseUrl = URI.create("http://localhost:" + server.port());
 		try (var ctx = new AnnotationConfigApplicationContext()) {
 			ctx.getEnvironment().getPropertySources()
-				.addFirst(new MapPropertySource("t", java.util.Map.of("steam.api.max-concurrent-requests", "2")));
+				.addFirst(new MapPropertySource("t", java.util.Map.of("steam.api.max-concurrent-requests", "2",
+					"test.base-url", "http://localhost:" + server.port())));
 			ctx.register(Cfg.class);
 			ctx.refresh();
 			SteamApiClient client = ctx.getBean(SteamApiClient.class);

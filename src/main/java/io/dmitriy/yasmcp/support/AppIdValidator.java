@@ -1,5 +1,7 @@
 package io.dmitriy.yasmcp.support;
 
+import org.jspecify.annotations.Nullable;
+
 import io.dmitriy.yasmcp.model.ErrorCode;
 import io.dmitriy.yasmcp.model.SteamException;
 
@@ -11,7 +13,7 @@ public final class AppIdValidator {
 	private AppIdValidator() {
 	}
 
-	public static long requireValid(Long appid) {
+	public static long requireValid(@Nullable Long appid) {
 		if (appid == null || appid < 1 || appid > MAX) {
 			throw new SteamException(ErrorCode.INVALID_ARGUMENT, "appid must be an integer between 1 and 4294967295");
 		}

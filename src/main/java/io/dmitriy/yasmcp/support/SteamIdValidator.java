@@ -1,5 +1,7 @@
 package io.dmitriy.yasmcp.support;
 
+import org.jspecify.annotations.Nullable;
+
 import io.dmitriy.yasmcp.model.ErrorCode;
 import io.dmitriy.yasmcp.model.SteamException;
 
@@ -11,7 +13,7 @@ public final class SteamIdValidator {
 	private SteamIdValidator() {
 	}
 
-	public static boolean isValid(String value) {
+	public static boolean isValid(@Nullable String value) {
 		if (value == null || value.length() != LENGTH) {
 			return false;
 		}
@@ -31,8 +33,8 @@ public final class SteamIdValidator {
 	}
 
 	/** Returns the same string unchanged, or throws without echoing the value. */
-	public static String requireValid(String value) {
-		if (!isValid(value)) {
+	public static String requireValid(@Nullable String value) {
+		if (value == null || !isValid(value)) {
 			throw new SteamException(ErrorCode.INVALID_ARGUMENT, "SteamID64 must be a 17-digit decimal string");
 		}
 		return value;

@@ -26,9 +26,13 @@ class SteamPropertiesTest {
 
 	@Test
 	void binding_withoutCredentials_shouldStartAndFailAtCallTime() {
+		// Given: no key, no SteamID
 		runner.run(ctx -> {
+			// When
 			assertThat(ctx).hasNotFailed();
 			var api = ctx.getBean(SteamProperties.class).api();
+
+			// Then
 			assertThat(api.baseUrl()).hasToString("https://api.steampowered.com");
 			assertThat(api.retries()).isEqualTo(2);
 			assertThatThrownBy(api::requireKey).isInstanceOfSatisfying(SteamException.class,
@@ -40,9 +44,13 @@ class SteamPropertiesTest {
 
 	@Test
 	void binding_withMalformedSteamId_shouldStartAndFailAtCallTimeWithoutEcho() {
+		// Given
 		runner.withPropertyValues("steam.api.steam-id=not-an-id-SECRET").run(ctx -> {
+			// When
 			assertThat(ctx).hasNotFailed();
 			var api = ctx.getBean(SteamProperties.class).api();
+
+			// Then
 			assertThatThrownBy(api::requireSteamId).isInstanceOf(SteamException.class)
 				.hasMessageNotContaining("SECRET");
 		});
@@ -50,8 +58,12 @@ class SteamPropertiesTest {
 
 	@Test
 	void binding_withCredentials_shouldReturnUnchanged() {
+		// Given
 		runner.withPropertyValues("steam.api.steam-id=76561197960287930", "steam.api.key=abc").run(ctx -> {
+			// When
 			var api = ctx.getBean(SteamProperties.class).api();
+
+			// Then
 			assertThat(api.requireSteamId()).isEqualTo("76561197960287930");
 			assertThat(api.requireKey()).isEqualTo("abc");
 		});
@@ -63,12 +75,14 @@ class SteamPropertiesTest {
 			"https://api.steampowered.com/IPlayerService", "https://api.steampowered.com:8443",
 			"http://localhost:8080", "http://127.0.0.1:8080" })
 	void binding_withNonOfficialOrigin_shouldFailStartup(String url) {
+		// Given / When / Then
 		runner.withPropertyValues("steam.api.base-url=" + url).run(ctx -> assertThat(ctx).hasFailed());
 	}
 
 	@ParameterizedTest
 	@ValueSource(strings = { "http://localhost:8080", "http://127.0.0.1:9999", "https://localhost" })
 	void binding_withTestOverrideAndLoopback_shouldStart(String url) {
+		// Given / When / Then
 		runner.withPropertyValues("steam.api.base-url=" + url, "steam.api.allow-insecure-test-base-url=true")
 			.run(ctx -> assertThat(ctx).hasNotFailed());
 	}
@@ -76,14 +90,17 @@ class SteamPropertiesTest {
 	@ParameterizedTest
 	@ValueSource(strings = { "http://evil.example", "https://partner.steam-api.com", "http://localhost.evil.example" })
 	void binding_withTestOverrideAndNonLoopback_shouldFailStartup(String url) {
+		// Given / When / Then
 		runner.withPropertyValues("steam.api.base-url=" + url, "steam.api.allow-insecure-test-base-url=true")
 			.run(ctx -> assertThat(ctx).hasFailed());
 	}
 
 	@ParameterizedTest
 	@ValueSource(strings = { "steam.api.retries=-1", "steam.api.retries=6", "steam.api.connect-timeout=0s",
-			"steam.api.read-timeout=10m" })
+			"steam.api.read-timeout=10m", "steam.api.total-timeout=0s", "steam.api.max-concurrent-requests=0",
+			"steam.api.max-concurrent-requests=17" })
 	void binding_withUnsafeLimit_shouldFailStartup(String property) {
+		// Given / When / Then
 		runner.withPropertyValues(property).run(ctx -> assertThat(ctx).hasFailed());
 	}
 
