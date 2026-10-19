@@ -10,20 +10,20 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
+import io.dmitriy.yasmcp.McpSpringBootTest;
 import io.dmitriy.yasmcp.model.ErrorCode;
 import io.dmitriy.yasmcp.model.SteamException;
 
 /** Guards against Boot's own HTTP-service property configurers overriding our transport settings. */
-@SpringBootTest(properties = { "steam.api.key=k", "steam.api.steam-id=76561197960287930", "steam.api.retries=0",
+@McpSpringBootTest(properties = { "steam.api.key=k", "steam.api.steam-id=76561197960287930", "steam.api.retries=0",
 		"steam.api.read-timeout=300ms", "steam.api.allow-insecure-test-base-url=true",
-		"spring.ai.mcp.server.stdio=false", "spring.http.serviceclient.steam.base-url=https://evil.example" })
+		"spring.http.serviceclient.steam.base-url=https://evil.example" })
 class SteamClientBootWiringTest {
 
 	private static final WireMockServer SERVER = new WireMockServer(WireMockConfiguration.options().dynamicPort());
