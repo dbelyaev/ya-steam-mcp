@@ -30,18 +30,28 @@ public class ToolResults {
 		this.jsonMapper = jsonMapper;
 	}
 
-	public CallToolResult run(Supplier<ToolResponse<?>> action) {
+	/** Logs tool name, outcome and duration only: never arguments, data or messages. */
+	public CallToolResult run(String toolName, Supplier<ToolResponse<?>> action) {
+		long start = System.nanoTime();
 		try {
-			return success(action.get());
+			CallToolResult result = success(action.get());
+			logOutcome(toolName, "ok", start);
+			return result;
 		}
 		catch (SteamException ex) {
+			logOutcome(toolName, ex.code().name(), start);
 			return error(ToolError.of(ex.code(), ex.getMessage()));
 		}
 		catch (Throwable ex) {
 			// class name only: message and cause may carry request URLs
-			log.error("Unexpected failure in tool: {}", ex.getClass().getName());
+			log.error("Unexpected failure in tool {}: {}", toolName, ex.getClass().getName());
+			logOutcome(toolName, ErrorCode.INTERNAL_ERROR.name(), start);
 			return error(ToolError.of(ErrorCode.INTERNAL_ERROR, INTERNAL_MESSAGE));
 		}
+	}
+
+	private static void logOutcome(String toolName, String outcome, long startNanos) {
+		log.info("tool={} outcome={} durationMs={}", toolName, outcome, (System.nanoTime() - startNanos) / 1_000_000);
 	}
 
 	public CallToolResult success(ToolResponse<?> response) {

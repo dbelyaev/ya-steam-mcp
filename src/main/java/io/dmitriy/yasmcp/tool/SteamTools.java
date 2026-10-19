@@ -21,7 +21,7 @@ public class SteamTools {
 	@McpTool(name = "get_library", description = "List visible Steam games owned by the configured Steam user; filter and sort locally.",
 			annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true, openWorldHint = true))
 	public CallToolResult getLibrary() {
-		return results.run(() -> new ToolResponse<>(Map.of("games", List.of()),
+		return results.run("get_library", () -> new ToolResponse<>(Map.of("games", List.of()),
 				ToolResponse.Meta.of(Instant.now(), false, false, List.of())));
 	}
 
