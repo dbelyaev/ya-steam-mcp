@@ -1,5 +1,5 @@
 # Status
-- Done: P0 bootstrap (uncommitted).
-- Next: P1 Steam client.
+- Done: P0 bootstrap; P1 Steam client (properties + base-URL allowlist, validators, upstream DTOs, `SteamApiClientImpl` with retry/error mapping, 23 WireMock tests).
+- Next: P2 core tools (SteamService, get_library, get_playtime, get_recent_games).
 - Blockers: none.
-- Files: pom.xml, src/main/resources/{application.yml,logback-spring.xml}, tool/SteamTools.java (stub), docs/*.
+- Notes: `SteamException(ErrorCode, msg)` in `model/` is the single public failure type (client, validators, config). `INTERNAL_ERROR` added as catch-all code (not in spec table).

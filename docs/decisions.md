@@ -26,3 +26,9 @@ Server always starts offline. Missing/invalid key or SteamID surface at tool-cal
 
 ## D8 — Jar name (2026-10-19)
 `finalName` set to `steam-mcp-server-${project.version}` in P5 to match checklist; artifactId stays `yasmcp`.
+
+## D9 — Shared failure type and INTERNAL_ERROR (2026-10-19)
+One `SteamException(ErrorCode, fixedMessage)` in `model/` (no cause, no stack trace) is used by validators, config accessors and the client, instead of a client-only `SteamClientException`. `INTERNAL_ERROR` added for the tool catch-all; spec table lacks it.
+
+## D10 — Client status handling (2026-10-19)
+HTTP 400 with a parseable envelope is returned to the caller (Steam reports "no stats"/private data this way for `GetPlayerAchievements`); service maps it. Other 4xx, 3xx, empty/oversized/malformed bodies and missing envelope -> `UPSTREAM_BAD_RESPONSE`. Redirects are never followed. 401/403 -> `UPSTREAM_AUTH_FAILED`, no retry.
