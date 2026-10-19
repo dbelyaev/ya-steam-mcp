@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: yasmcp
+  main:
+    web-application-type: none
+    banner-mode: off
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: steam-mcp-server
+        version: 0.1.0
+        type: SYNC
+        stdio: true
+        annotation-scanner:
+          enabled: true
+        capabilities:
+          tool: true
+          resource: false
+          prompt: false
+          completion: false
+
+steam:
+  api:
+    base-url: https://api.steampowered.com
+    key: ${STEAM_API_KEY:}
+    steam-id: ${STEAM_ID:}
+    connect-timeout: 3s
+    read-timeout: 10s
+    retries: 2
+    default-language: english
+  library:
+    include-played-free-games: true
+  store:
+    enrichment-enabled: false
