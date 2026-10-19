@@ -24,8 +24,8 @@ Server always starts offline. Missing/invalid key or SteamID surface at tool-cal
 ## D7 — Output schema (2026-10-19)
 `generateOutputSchema=false`; text JSON envelope. Revisit with concrete per-tool records.
 
-## D8 — Jar name (2026-10-19)
-`finalName` set to `steam-mcp-server-${project.version}` in P5 to match checklist; artifactId stays `yasmcp`.
+## D8 — Jar name (2026-10-19, done in P4)
+`finalName` is `steam-mcp-server-${project.version}` to match the checklist; artifactId stays `yasmcp`.
 
 ## D9 — Shared failure type and INTERNAL_ERROR (2026-10-19)
 One `SteamException(ErrorCode, fixedMessage)` in `model/` (no cause, no stack trace) is used by validators, config accessors and the client, instead of a client-only `SteamClientException`. `INTERNAL_ERROR` added for the tool catch-all; spec table lacks it.
@@ -70,3 +70,12 @@ configuration-properties says missing credentials should fail startup; spec 4.3 
 - **News**: all text is reduced to plain text (HTML/BBCode/Steam placeholders/script/style removed, `&lt;`/`&gt;` left encoded so no tag can be re-created, control and bidi characters stripped); only absolute `https` links without credentials survive; `date` -> ISO UTC. Requests to Steam use `maxlength = min(3 * maxContentChars, 12000)` because markup is longer than its text; the preview is cut again to `maxContentChars`. `maxContentChars=0` omits the body and asks Steam for `maxlength=1`, since Steam treats 0 (or an omitted value) as full content (improves pre-mortem item 13, which said to omit it).
 - **Game details**: policy chosen and fixed: library hit and/or schema data -> object (unowned -> `ownedOrVisibleInLibrary=false`, `meta.partial=true`, warning). No library hit and no schema data -> `GAME_DETAILS_UNAVAILABLE`. No library hit and the schema call itself failed -> that (retryable) upstream error, not "unavailable". Schema failure with a library hit -> partial plus warning. `description`, `genres`, `releaseDate`, `iconUrl` stay null.
 - The six MVP tools are asserted exactly in `SteamToolsContractTest`.
+
+## D18 — SDK STDIO transport drops concurrent responses; handlers run serially (2026-10-19)
+MCP Java SDK 2.0.0 `StdioServerTransportProvider` writes through `Sinks.many().unicast()`, which is not safe for concurrent emitters. With the default scheduling (handlers on Reactor `boundedElastic`) pipelined `tools/call` requests finish on different threads and some responses die with `Failed to enqueue message`; the client never gets them. Reproduced with the built jar: 15 of 41 pipelined requests answered. Fix: a `McpSyncServerCustomizer` sets `immediateExecution(true)` (Spring AI sets it only for servlet servers), so every handler runs on the single transport thread. Cost: tool calls are strictly serial, and a long call (bounded by `steam.api.total-timeout`) delays later requests, acceptable for a local single-user server. `StdioHygieneIT.pipelinedBurst_shouldAnswerEveryRequestExactlyOnce` pins it (fails with 15 of 41 without the fix). `@ConcurrencyLimit` stays as defense in depth; it is no longer reachable concurrently over STDIO. Revisit when the SDK fixes the sink or if HTTP transport is added.
+
+## D19 — Cache (2026-10-19)
+`CachedSteamApiClient` (Caffeine, per-endpoint TTL from `steam.cache.*`, spec defaults 5m/2m/10m/24h/10m) wraps the retrying client (`@Primary`; the retrying bean is `steamApiClientDelegate`). Only successful answers that look complete are stored: never errors, empty owned-games, `success:false` or empty achievements, empty schema. Keys: SteamID, AppID, language, counts, never the API key. `meta.cached` is true only when every upstream read of the call was a cache hit; the signal travels via a `ScopedValue` (`CacheTrace`) bound in `ToolResults.run`, so service signatures are unchanged. No stale-while-error. `steam.cache.enabled=false` disables it.
+
+## D20 — Tests in the surefire fork and integration tests (2026-10-19)
+`*IT` classes run with failsafe after `package` against `target/steam-mcp-server-<version>.jar` (`e2e.jar` system property), with WireMock as Steam and `STEAM_API_BASE_URL` / `STEAM_API_ALLOW_INSECURE_TEST_BASE_URL` / `STEAM_API_RETRY_DELAY` as child environment (relaxed binding). Child JVMs use `-XX:+DisplayVMOutputToStderr`.
