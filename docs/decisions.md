@@ -32,3 +32,15 @@ One `SteamException(ErrorCode, fixedMessage)` in `model/` (no cause, no stack tr
 
 ## D10 — Client status handling (2026-10-19)
 HTTP 400 with a parseable envelope is returned to the caller (Steam reports "no stats"/private data this way for `GetPlayerAchievements`); service maps it. Other 4xx, 3xx, empty/oversized/malformed bodies and missing envelope -> `UPSTREAM_BAD_RESPONSE`. Redirects are never followed. 401/403 -> `UPSTREAM_AUTH_FAILED`, no retry.
+
+## D11 — Retry mechanism (open, decided in P1R spike A)
+Custom loop vs Framework 7 `@Retryable`. Decision criteria: `Retry-After` support, test determinism, overall deadline. Outcome recorded here after the spike.
+
+## D12 — Declarative HTTP client (open, decided in P1R spike B)
+Manual `RestClient.exchange` vs `@HttpExchange` + `@ImportHttpServices`. Criteria: no-throw status handling, status/header access, redirects off, allowlist on resolved URL, WireMock suite unchanged. Outcome recorded here after the spike.
+
+## D13 — Service split (2026-10-19)
+No `SteamService`/`SteamServiceImpl`. Capability services (`LibraryService`, `AchievementService`, `NewsService`, `GameDetailsService`) without interfaces; interface kept on `SteamApiClient` only. No Lombok (explicit loggers).
+
+## D14 — Config strictness vs skill (2026-10-19)
+configuration-properties says missing credentials should fail startup; spec 4.3 demands offline start and call-time `CONFIGURATION_MISSING`. Spec wins (D6).
