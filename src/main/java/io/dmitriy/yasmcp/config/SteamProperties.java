@@ -34,6 +34,7 @@ public record SteamProperties(@DefaultValue @Valid Api api, @DefaultValue Librar
 			@DefaultValue("3s") @NotNull Duration connectTimeout,
 			@DefaultValue("10s") @NotNull Duration readTimeout,
 			@DefaultValue("2") @Min(0) @Max(5) int retries,
+			@DefaultValue("200ms") @NotNull Duration retryDelay,
 			@DefaultValue("30s") @NotNull Duration totalTimeout,
 			@DefaultValue("4") @Min(1) @Max(16) int maxConcurrentRequests,
 			@DefaultValue("english") @NotBlank String defaultLanguage,
@@ -53,6 +54,11 @@ public record SteamProperties(@DefaultValue @Valid Api api, @DefaultValue Librar
 			return inRange(connectTimeout, Duration.ofMillis(100), Duration.ofSeconds(30));
 		}
 
+		@AssertTrue(message = "steam.api.retry-delay must be between 1ms and 5s")
+		public boolean isRetryDelayInRange() {
+			return inRange(retryDelay, Duration.ofMillis(1), Duration.ofSeconds(5));
+		}
+
 		@AssertTrue(message = "steam.api.total-timeout must be between 1s and 2m")
 		public boolean isTotalTimeoutInRange() {
 			return inRange(totalTimeout, Duration.ofSeconds(1), Duration.ofMinutes(2));
@@ -68,7 +74,7 @@ public record SteamProperties(@DefaultValue @Valid Api api, @DefaultValue Librar
 		public String toString() {
 			return "Api[baseUrl=" + baseUrl + ", key=" + (key == null || key.isBlank() ? "<unset>" : "<redacted>")
 					+ ", steamId=" + (steamId == null || steamId.isBlank() ? "<unset>" : "<redacted>")
-					+ ", connectTimeout=" + connectTimeout + ", readTimeout=" + readTimeout + ", totalTimeout=" + totalTimeout + ", maxConcurrentRequests=" + maxConcurrentRequests
+					+ ", connectTimeout=" + connectTimeout + ", readTimeout=" + readTimeout + ", retryDelay=" + retryDelay + ", totalTimeout=" + totalTimeout + ", maxConcurrentRequests=" + maxConcurrentRequests
 					+ ", retries=" + retries
 					+ ", defaultLanguage=" + defaultLanguage + ", allowInsecureTestBaseUrl=" + allowInsecureTestBaseUrl
 					+ "]";

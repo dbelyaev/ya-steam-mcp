@@ -11,12 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,11 +43,9 @@ class SteamApiClientTest {
 
 	private static final String BODY_SECRET = "SECRETBODYTEXT";
 
-	private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-19T18:00:00Z"), ZoneOffset.UTC);
-
 	private WireMockServer server;
 
-	private final List<Duration> sleeps = new ArrayList<>();
+	private final ResilientClients clients = new ResilientClients();
 
 	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
 
@@ -75,6 +68,7 @@ class SteamApiClientTest {
 			assertThat(ev.getFormattedMessage()).doesNotContain(KEY).doesNotContain(BODY_SECRET);
 			assertThat(ev.getThrowableProxy()).isNull();
 		});
+		clients.close();
 		server.stop();
 	}
 
@@ -84,12 +78,12 @@ class SteamApiClientTest {
 
 	private SteamApiClient client(int retries, Duration readTimeout, Duration totalTimeout, String key) {
 		var api = new SteamProperties.Api(URI.create("http://localhost:" + server.port()), key, STEAM_ID,
-				Duration.ofSeconds(1), readTimeout, retries, totalTimeout, 4, "english", true);
+				Duration.ofSeconds(1), readTimeout, retries, Duration.ofMillis(1), totalTimeout, 4, "english", true);
 		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false));
 		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();
 		SteamWebApi webApi = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rc)).build()
 			.createClient(SteamWebApi.class);
-		return new SteamApiClientImpl(props, webApi, JsonMapper.builder().build(), sleeps::add, CLOCK);
+		return clients.create(props, webApi, JsonMapper.builder().build());
 	}
 
 	private SteamApiClient client(int retries) {
@@ -128,7 +122,6 @@ class SteamApiClientTest {
 			.withQueryParam("steamid", equalTo(STEAM_ID))
 			.withQueryParam("include_appinfo", equalTo("true"))
 			.withQueryParam("include_played_free_games", equalTo("true")));
-		assertThat(sleeps).isEmpty();
 	}
 
 	@Test
@@ -233,7 +226,6 @@ class SteamApiClientTest {
 
 		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
-		assertThat(sleeps).isEmpty();
 	}
 
 	@Test
@@ -292,7 +284,6 @@ class SteamApiClientTest {
 		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_AUTH_FAILED));
 		assertThat(server.getAllServeEvents()).hasSize(1);
-		assertThat(sleeps).isEmpty();
 	}
 
 	@Test
@@ -308,51 +299,25 @@ class SteamApiClientTest {
 	// ---- rate limit ----
 
 	@Test
-	void getOwnedGames_when429WithRetryAfterSeconds_shouldHonorHeaderThenGiveUp() {
-		// Given
+	void getOwnedGames_when429_shouldFailImmediatelyWithoutRetry() {
+		// Given: Retry-After is deliberately ignored; the calling agent decides whether to retry
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(429).withHeader("Retry-After", "3")));
 
 		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_RATE_LIMITED));
-		assertThat(server.getAllServeEvents()).hasSize(3);
-		assertThat(sleeps).containsExactly(Duration.ofSeconds(3), Duration.ofSeconds(3));
-	}
-
-	@Test
-	void getOwnedGames_when429WithRetryAfterDate_shouldSleepUntilDate() {
-		// Given: fixed clock is 18:00:00Z, header says 18:00:05
-		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(429)
-			.withHeader("Retry-After", "Mon, 19 Oct 2026 18:00:05 GMT")));
-
-		// When / Then
-		assertThatThrownBy(() -> client(1).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_RATE_LIMITED));
-		assertThat(sleeps).containsExactly(Duration.ofSeconds(5));
-	}
-
-	@Test
-	void getOwnedGames_when429WithRetryAfterAboveCap_shouldFailImmediately() {
-		// Given
-		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(429).withHeader("Retry-After", "30")));
-
-		// When / Then
-		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_RATE_LIMITED));
 		assertThat(server.getAllServeEvents()).hasSize(1);
-		assertThat(sleeps).isEmpty();
 	}
 
 	// ---- 5xx ----
 
 	@Test
-	void getOwnedGames_whenServerErrorPersists_shouldRetryTwiceWithBoundedJitter() {
+	void getOwnedGames_whenServerErrorPersists_shouldRetryTwiceThenThrowUnavailable() {
 		// Given
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(503).withBody(BODY_SECRET)));
 
 		// When / Then
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 		assertThat(server.getAllServeEvents()).hasSize(3);
-		assertThat(sleeps).hasSize(2);
-		assertThat(sleeps.get(0)).isBetween(Duration.ofMillis(100), Duration.ofMillis(200));
-		assertThat(sleeps.get(1)).isBetween(Duration.ofMillis(200), Duration.ofMillis(400));
 	}
 
 	@Test
@@ -369,7 +334,6 @@ class SteamApiClientTest {
 		// Then
 		assertThat(requireNonNull(requireNonNull(r.response()).games())).isEmpty();
 		assertThat(server.getAllServeEvents()).hasSize(2);
-		assertThat(sleeps).hasSize(1);
 	}
 
 	@Test
@@ -380,7 +344,6 @@ class SteamApiClientTest {
 		// When / Then
 		assertThatThrownBy(() -> client(0).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 		assertThat(server.getAllServeEvents()).hasSize(1);
-		assertThat(sleeps).isEmpty();
 	}
 
 	// ---- network ----
@@ -415,7 +378,6 @@ class SteamApiClientTest {
 		assertThatThrownBy(() -> client(5, Duration.ofMillis(300), Duration.ofSeconds(1), KEY).getOwnedGames())
 			.satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 		assertThat(server.getAllServeEvents()).hasSizeLessThan(6);
-		assertThat(sleeps).hasSizeLessThan(5);
 	}
 
 	@Test

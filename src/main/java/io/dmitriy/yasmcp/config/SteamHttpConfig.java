@@ -7,12 +7,14 @@ import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.boot.http.client.HttpRedirects;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.resilience.annotation.EnableResilientMethods;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
+import org.springframework.web.service.registry.HttpServiceProxyRegistry;
 import org.springframework.web.service.registry.ImportHttpServices;
 
-import io.dmitriy.yasmcp.client.Sleeper;
+import io.dmitriy.yasmcp.client.ConcurrencyLimitedSteamWebApi;
 import io.dmitriy.yasmcp.client.SteamApiClient;
 import io.dmitriy.yasmcp.client.SteamApiClientImpl;
 import io.dmitriy.yasmcp.client.SteamWebApi;
@@ -28,11 +30,6 @@ public class SteamHttpConfig {
 	@Bean
 	Clock clock() {
 		return Clock.systemUTC();
-	}
-
-	@Bean
-	Sleeper sleeper() {
-		return Sleeper.SYSTEM;
 	}
 
 	/**
@@ -54,10 +51,16 @@ public class SteamHttpConfig {
 			});
 	}
 
+	/** Decorates the registry-created client; {@code @Primary} so the Steam client injects the limited one. */
 	@Bean
-	SteamApiClient steamApiClient(SteamProperties properties, SteamWebApi steamWebApi, JsonMapper jsonMapper,
-			Sleeper sleeper, Clock clock) {
-		return new SteamApiClientImpl(properties, steamWebApi, jsonMapper, sleeper, clock);
+	@Primary
+	SteamWebApi limitedSteamWebApi(HttpServiceProxyRegistry registry) {
+		return new ConcurrencyLimitedSteamWebApi(registry.getClient(SteamWebApi.class));
+	}
+
+	@Bean
+	SteamApiClient steamApiClient(SteamProperties properties, SteamWebApi steamWebApi, JsonMapper jsonMapper) {
+		return new SteamApiClientImpl(properties, steamWebApi, jsonMapper);
 	}
 
 }
