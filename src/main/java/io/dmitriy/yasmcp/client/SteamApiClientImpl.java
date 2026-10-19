@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.ResourceAccessException;
@@ -101,7 +102,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 	}
 
 	@Override
-	public NewsResponse getNewsForApp(long appid, int count, Integer maxLength) {
+	public NewsResponse getNewsForApp(long appid, int count, @Nullable Integer maxLength) {
 		Map<String, Object> params = new LinkedHashMap<>();
 		params.put("appid", appid);
 		params.put("count", count);
@@ -157,12 +158,12 @@ public class SteamApiClientImpl implements SteamApiClient {
 		}
 	}
 
-	private static byte[] readBounded(java.io.InputStream in) throws IOException {
+	private static byte @Nullable [] readBounded(java.io.InputStream in) throws IOException {
 		byte[] body = in.readNBytes(MAX_BODY_BYTES + 1);
 		return body.length > MAX_BODY_BYTES ? null : body;
 	}
 
-	private <T> T parse(byte[] body, Class<T> type, Function<T, ?> envelope) {
+	private <T> T parse(byte @Nullable [] body, Class<T> type, Function<T, ?> envelope) {
 		if (body == null || body.length == 0) {
 			throw failure(ErrorCode.UPSTREAM_BAD_RESPONSE);
 		}
@@ -191,7 +192,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 		};
 	}
 
-	private void pause(String endpoint, int attempt, int status, Duration retryAfter) {
+	private void pause(String endpoint, int attempt, int status, @Nullable Duration retryAfter) {
 		Duration delay = retryAfter != null ? retryAfter
 				: BASE_BACKOFF.multipliedBy(1L << attempt).multipliedBy(500 + ThreadLocalRandom.current().nextInt(501)).dividedBy(1000);
 		log.warn("Steam {} attempt {} failed (status {}); retrying in {} ms", endpoint, attempt + 1, status, delay.toMillis());
@@ -205,7 +206,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 	}
 
 	/** Seconds or HTTP-date; {@code null} when absent or unparseable. */
-	private Duration retryAfter(String header) {
+	private @Nullable Duration retryAfter(@Nullable String header) {
 		if (header == null || header.isBlank()) {
 			return null;
 		}
@@ -234,7 +235,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 		});
 	}
 
-	private record Outcome(int status, String retryAfterHeader, byte[] body) {
+	private record Outcome(int status, @Nullable String retryAfterHeader, byte @Nullable [] body) {
 	}
 
 }

@@ -4,20 +4,21 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.jspecify.annotations.Nullable;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record GameSchemaResponse(Game game) {
+public record GameSchemaResponse(@Nullable Game game) {
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	public record Game(String gameName, AvailableGameStats availableGameStats) {
+	public record Game(@Nullable String gameName, @Nullable AvailableGameStats availableGameStats) {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	public record AvailableGameStats(List<Achievement> achievements) {
+	public record AvailableGameStats(@Nullable List<Achievement> achievements) {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	public record Achievement(String name, String displayName, String description, Integer hidden) {
+	public record Achievement(@Nullable String name, @Nullable String displayName, @Nullable String description, @Nullable Integer hidden) {
 	}
 
 }

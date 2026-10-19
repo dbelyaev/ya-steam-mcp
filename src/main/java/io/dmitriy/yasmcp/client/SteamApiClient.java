@@ -1,5 +1,7 @@
 package io.dmitriy.yasmcp.client;
 
+import org.jspecify.annotations.Nullable;
+
 import io.dmitriy.yasmcp.steamdto.GameSchemaResponse;
 import io.dmitriy.yasmcp.steamdto.NewsResponse;
 import io.dmitriy.yasmcp.steamdto.OwnedGamesResponse;
@@ -22,6 +24,6 @@ public interface SteamApiClient {
 	GameSchemaResponse getSchemaForGame(long appid, String language);
 
 	/** @param maxLength Steam {@code maxlength}; {@code null} omits the parameter */
-	NewsResponse getNewsForApp(long appid, int count, Integer maxLength);
+	NewsResponse getNewsForApp(long appid, int count, @Nullable Integer maxLength);
 
 }
