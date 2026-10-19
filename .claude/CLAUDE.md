@@ -38,3 +38,7 @@ change, including `spring-boot-migration` when upgrading an existing Boot 3 appl
 ## Completion
 
 Run focused tests followed by `./mvnw verify`. Test the native executable when AOT behavior changes.
+
+## Delegation
+
+Delegate all repository searches and test runs to Haiku 5.5 subagents (`search`, `grep`, `audit`) to keep main context under 10k tokens.
