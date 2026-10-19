@@ -77,6 +77,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>steam-mcp-server-${project.version}</finalName>
 		<plugins>
 			<!-- exposes ${org.mockito:mockito-core:jar} for the Mockito agent (JDK 25 forbids dynamic self-attach) -->
 			<plugin>
@@ -91,6 +92,24 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+			<!-- *IT classes run after package against the built jar; no Mockito agent needed -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<systemPropertyVariables>
+						<e2e.jar>${project.build.directory}/${project.build.finalName}.jar</e2e.jar>
+					</systemPropertyVariables>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
