@@ -12,6 +12,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
 import org.jspecify.annotations.Nullable;
+import org.springframework.resilience.annotation.ConcurrencyLimit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.ResourceAccessException;
@@ -33,6 +34,7 @@ import tools.jackson.databind.json.JsonMapper;
  * responses are read through {@code exchange} (no status exceptions with bodies),
  * I/O failures are translated immediately, and messages are fixed strings.
  */
+@ConcurrencyLimit(limitString = "${steam.api.max-concurrent-requests:4}")
 public class SteamApiClientImpl implements SteamApiClient {
 
 	static final Duration MAX_RETRY_AFTER = Duration.ofSeconds(10);
@@ -122,6 +124,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 
 	private <T> T get(String endpoint, String path, Map<String, Object> params, Class<T> type,
 			Function<T, @Nullable Object> envelope) {
+		long deadlineNanos = System.nanoTime() + api.totalTimeout().toNanos();
 		for (int attempt = 0;; attempt++) {
 			Outcome outcome = attempt(endpoint, path, params);
 			if (outcome.status() >= 200 && outcome.status() < 300 || outcome.status() == 400) {
@@ -133,7 +136,12 @@ public class SteamApiClientImpl implements SteamApiClient {
 			if (!retryable || attempt >= api.retries() || (retryAfter != null && retryAfter.compareTo(MAX_RETRY_AFTER) > 0)) {
 				throw failure(code);
 			}
-			pause(endpoint, attempt, outcome.status(), retryAfter);
+			Duration delay = nextDelay(attempt, retryAfter);
+			if (System.nanoTime() + delay.toNanos() >= deadlineNanos) {
+				log.warn("Steam {} giving up: total timeout would be exceeded", endpoint);
+				throw failure(code);
+			}
+			pause(endpoint, attempt, outcome.status(), delay);
 		}
 	}
 
@@ -192,9 +200,14 @@ public class SteamApiClientImpl implements SteamApiClient {
 		};
 	}
 
-	private void pause(String endpoint, int attempt, int status, @Nullable Duration retryAfter) {
-		Duration delay = retryAfter != null ? retryAfter
-				: BASE_BACKOFF.multipliedBy(1L << attempt).multipliedBy(500 + ThreadLocalRandom.current().nextInt(501)).dividedBy(1000);
+	private static Duration nextDelay(int attempt, @Nullable Duration retryAfter) {
+		if (retryAfter != null) {
+			return retryAfter;
+		}
+		return BASE_BACKOFF.multipliedBy(1L << attempt).multipliedBy(500 + ThreadLocalRandom.current().nextInt(501)).dividedBy(1000);
+	}
+
+	private void pause(String endpoint, int attempt, int status, Duration delay) {
 		log.warn("Steam {} attempt {} failed (status {}); retrying in {} ms", endpoint, attempt + 1, status, delay.toMillis());
 		try {
 			sleeper.sleep(delay);

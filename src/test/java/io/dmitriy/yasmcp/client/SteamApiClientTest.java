@@ -76,8 +76,12 @@ class SteamApiClientTest {
 	}
 
 	private SteamApiClient client(int retries, Duration readTimeout, String key) {
+		return client(retries, readTimeout, Duration.ofSeconds(30), key);
+	}
+
+	private SteamApiClient client(int retries, Duration readTimeout, Duration totalTimeout, String key) {
 		var api = new SteamProperties.Api(URI.create("http://localhost:" + server.port()), key, STEAM_ID,
-				Duration.ofSeconds(1), readTimeout, retries, "english", true);
+				Duration.ofSeconds(1), readTimeout, retries, totalTimeout, 4, "english", true);
 		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false));
 		RestClient rc = new SteamHttpConfig().steamRestClient(RestClient.builder(), props);
 		return new SteamApiClientImpl(props, rc, JsonMapper.builder().build(), sleeps::add, CLOCK);
@@ -312,6 +316,18 @@ class SteamApiClientTest {
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
 		assertThat(server.getAllServeEvents()).hasSize(3);
+	}
+
+	@Test
+	void getOwnedGames_whenTotalTimeoutIsShort_shouldStopRetryingEarly() {
+		// Given: every attempt takes ~300ms, five retries allowed, but only 1s overall
+		server.stubFor(get(anyUrl()).willReturn(json(200, "{\"response\":{}}").withFixedDelay(1500)));
+
+		// When / Then
+		assertThatThrownBy(() -> client(5, Duration.ofMillis(300), Duration.ofSeconds(1), KEY).getOwnedGames())
+			.satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_UNAVAILABLE));
+		assertThat(server.getAllServeEvents()).hasSizeLessThan(6);
+		assertThat(sleeps).hasSizeLessThan(5);
 	}
 
 	@Test
