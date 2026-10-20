@@ -100,7 +100,7 @@ class NewsServiceTest {
 		var preview = service.getNews(620L, 2, 100).data().items().getFirst().contentPreview();
 
 		// Then
-		assertThat(preview).hasSize(100).endsWith("…");
+		assertThat(preview).hasSize(100).endsWith("\u2026");
 	}
 
 	@Test
