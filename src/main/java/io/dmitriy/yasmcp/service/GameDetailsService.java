@@ -48,48 +48,75 @@ public class GameDetailsService {
 		String lang = SteamLanguage.resolve(language, api.defaultLanguage());
 
 		Optional<GameSummary> owned = libraryService.findOwned(id);
-		List<String> warnings = new ArrayList<>();
-		GameSchemaResponse.@Nullable Game schema = null;
-		SteamException schemaFailure = null;
+		SchemaLookup schema = lookUpSchema(id, lang);
+		failIfNothingAnswered(owned, schema);
+		return assemble(id, owned.orElse(null), schema);
+	}
+
+	/** The schema is optional enrichment: a failure is kept, logged, and reported as a warning. */
+	private SchemaLookup lookUpSchema(long appid, String language) {
 		try {
-			schema = client.getSchemaForGame(id, lang).game();
+			return new SchemaLookup(client.getSchemaForGame(appid, language).game(), null);
 		}
 		catch (SteamException ex) {
-			log.warn("Game schema unavailable for appid {}: {}", id, ex.code());
-			schemaFailure = ex;
-			warnings.add("The game schema is unavailable; achievement count and schema name are missing");
+			log.warn("Game schema unavailable for appid {}: {}", appid, ex.code());
+			return new SchemaLookup(null, ex);
 		}
-		String schemaName = schema == null ? null : schema.gameName();
-		var stats = schema == null ? null : schema.availableGameStats();
-		boolean schemaHasData = schemaName != null || stats != null;
+	}
 
-		if (owned.isEmpty() && schemaFailure != null) {
-			// nothing else answered, so a transient schema failure must stay visible (and retryable)
-			throw schemaFailure;
+	private static void failIfNothingAnswered(Optional<GameSummary> owned, SchemaLookup schema) {
+		if (owned.isPresent()) {
+			return;
 		}
-		if (owned.isEmpty() && !schemaHasData) {
+		if (schema.failure() != null) {
+			// nothing else answered, so a transient schema failure must stay visible (and retryable)
+			throw schema.failure();
+		}
+		if (!schema.hasData()) {
 			throw new SteamException(ErrorCode.GAME_DETAILS_UNAVAILABLE,
 					"No details are available for this game from the library or the game schema");
 		}
+	}
 
+	private static Result<GameDetails> assemble(long id, @Nullable GameSummary game, SchemaLookup schema) {
+		List<String> warnings = new ArrayList<>();
 		List<String> sources = new ArrayList<>();
-		if (owned.isPresent()) {
+		if (schema.failure() != null) {
+			warnings.add("The game schema is unavailable; achievement count and schema name are missing");
+		}
+		if (game != null) {
 			sources.add("GetOwnedGames");
 		}
 		else {
 			warnings.add("The game is not in the visible library; playtime and ownership are unknown");
 		}
-		if (schemaHasData) {
+		if (schema.hasData()) {
 			sources.add("GetSchemaForGame");
 		}
-		var achievements = stats == null ? null : stats.achievements();
-		Integer achievementCount = achievements == null ? null : achievements.size();
-		GameSummary game = owned.orElse(null);
-		String name = game != null && game.name() != null ? game.name() : schemaName;
-		boolean partial = owned.isEmpty() || !warnings.isEmpty();
-		GameDetails details = new GameDetails(id, name, StoreUrls.app(id), null, owned.isPresent(),
-				game == null ? null : game.playtimeForeverMinutes(), achievementCount, null, null, null, sources);
-		return new Result<>(details, partial, warnings);
+		String name = game != null && game.name() != null ? game.name() : schema.name();
+		GameDetails details = new GameDetails(id, name, StoreUrls.app(id), null, game != null,
+				game == null ? null : game.playtimeForeverMinutes(), schema.achievementCount(), null, null, null,
+				sources);
+		return new Result<>(details, !warnings.isEmpty(), warnings);
+	}
+
+	/** Outcome of the schema call: the game data (possibly empty) or the failure that prevented it. */
+	private record SchemaLookup(GameSchemaResponse.@Nullable Game game, @Nullable SteamException failure) {
+
+		@Nullable String name() {
+			return game == null ? null : game.gameName();
+		}
+
+		boolean hasData() {
+			return name() != null || (game != null && game.availableGameStats() != null);
+		}
+
+		@Nullable Integer achievementCount() {
+			var stats = game == null ? null : game.availableGameStats();
+			var achievements = stats == null ? null : stats.achievements();
+			return achievements == null ? null : achievements.size();
+		}
+
 	}
 
 }

@@ -11,12 +11,12 @@ public record Playtime(
 		@Nullable Integer playtimeLinuxForeverMinutes,
 		String source) {
 
-	public static final String SOURCE = "GetOwnedGames";
+	public static final String SOURCE_ENDPOINT = "GetOwnedGames";
 
 	public static Playtime from(GameSummary game) {
 		return new Playtime(game.appid(), game.name(), game.playtimeForeverMinutes(),
 				game.playtimeWindowsForeverMinutes(), game.playtimeMacForeverMinutes(),
-				game.playtimeLinuxForeverMinutes(), SOURCE);
+				game.playtimeLinuxForeverMinutes(), SOURCE_ENDPOINT);
 	}
 
 }
