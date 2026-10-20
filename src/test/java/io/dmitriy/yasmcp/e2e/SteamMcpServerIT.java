@@ -89,6 +89,8 @@ class SteamMcpServerIT {
 
 		// Then
 		assertThat(init.serverInfo().name()).isEqualTo("steam-mcp-server");
+		assertThat(init.serverInfo().version()).as("filtered from the pom, not a literal placeholder")
+			.matches("\\d+\\.\\d+\\.\\d+.*");
 		assertThat(init.capabilities().tools()).isNotNull();
 	}
 

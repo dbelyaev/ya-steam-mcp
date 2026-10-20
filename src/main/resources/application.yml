@@ -9,7 +9,7 @@ spring:
       server:
         enabled: true
         name: steam-mcp-server
-        version: 0.1.0
+        version: "@project.version@"
         type: SYNC
         stdio: true
         annotation-scanner:
