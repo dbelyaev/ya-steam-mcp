@@ -62,7 +62,7 @@ class SteamApiClientAdviceOrderTest {
 		try {
 			client.getOwnedGames();
 		}
-		catch (RuntimeException expected) {
+		catch (RuntimeException _) {
 			// upstream always fails
 		}
 	}

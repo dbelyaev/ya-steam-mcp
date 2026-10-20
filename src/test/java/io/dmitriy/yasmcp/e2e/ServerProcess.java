@@ -66,7 +66,7 @@ final class ServerProcess implements AutoCloseable {
 					sink.add(line);
 				}
 			}
-			catch (IOException ignored) {
+			catch (IOException _) {
 				// stream closed with the process
 			}
 		}, err ? "e2e-stderr" : "e2e-stdout");
