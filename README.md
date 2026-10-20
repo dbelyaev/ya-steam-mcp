@@ -103,7 +103,21 @@ STDIO command, generic form (adapt the file format to your host):
 ```
 
 `-XX:+DisplayVMOutputToStderr` keeps JVM warnings off stdout, which must carry JSON-RPC frames only.
-Claude Code: `claude mcp add steam -e STEAM_API_KEY=... -e STEAM_ID=... -- java -XX:+DisplayVMOutputToStderr -jar /absolute/path/steam-mcp-server-0.1.0-SNAPSHOT.jar`.
+**Claude Desktop (chat app):** open *Settings, Developer, Edit Config*, or edit the file directly
+(macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows
+`%APPDATA%\Claude\claude_desktop_config.json`), add the `steam` entry above under `mcpServers`, then quit and
+restart Claude Desktop completely. Two things differ from a terminal:
+
+- Desktop is a GUI app and often does not see your shell `PATH`, so a bare `java` may be missing or be an older
+  JDK. Use the full path to a **JDK 25** `java` as `command` (find it with `command -v java` or
+  `/usr/libexec/java_home -v 25` on macOS, `where java` on Windows).
+- Use an absolute path to the jar, and on Windows escape backslashes in JSON (`C:\\tools\\steam-mcp-server.jar`).
+
+If the server does not show up, read Desktop's MCP log (macOS `~/Library/Logs/Claude/mcp-server-steam.log`); this
+server writes its own log lines (`tool=... outcome=...`) to stderr, which ends up there, and never prints your key.
+This was not tested against a Desktop install; the configuration format is Desktop's documented one.
+
+**Claude Code:** `claude mcp add steam -e STEAM_API_KEY=... -e STEAM_ID=... -- java -XX:+DisplayVMOutputToStderr -jar /absolute/path/steam-mcp-server-0.1.0-SNAPSHOT.jar`.
 Never commit a configuration that contains a real key.
 
 The server starts without a key or SteamID and without network access; tools then answer with
