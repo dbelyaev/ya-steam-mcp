@@ -70,4 +70,29 @@ class SourceHygieneTest {
 		assertThat(yml).doesNotContainPattern("(?i)key:\\s*[A-F0-9]{32}");
 	}
 
+	/**
+	 * SonarCloud fails the whole analysis ("problems with file encoding") when a source file holds a
+	 * replacement character or cannot be decoded with the configured charset. Keeping src/ pure ASCII
+	 * (non-ASCII text goes in as unicode escapes) makes that impossible whatever charset a scanner assumes.
+	 */
+	@Test
+	void sourceTree_shouldBePureAsciiSoNoScannerCharsetCanMisreadIt() throws IOException {
+		// Given
+		List<String> offenders = new java.util.ArrayList<>();
+		try (Stream<Path> files = Files.walk(Path.of("src"))) {
+			for (Path file : files.filter(Files::isRegularFile).toList()) {
+				byte[] bytes = Files.readAllBytes(file);
+				for (int i = 0; i < bytes.length; i++) {
+					if (bytes[i] < 0) {
+						offenders.add(file + " (byte offset " + i + ")");
+						break;
+					}
+				}
+			}
+		}
+
+		// Then
+		assertThat(offenders).as("files with non-ASCII bytes; write them as unicode escapes").isEmpty();
+	}
+
 }

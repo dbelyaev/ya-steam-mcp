@@ -89,17 +89,17 @@ class NewsSanitizerTest {
 		String text = NewsSanitizer.toPlainText("x".repeat(50), 10);
 
 		// Then
-		assertThat(text).hasSize(10).endsWith("…");
+		assertThat(text).hasSize(10).endsWith("\u2026");
 	}
 
 	@Test
 	void toPlainText_withSurrogatePairsAtCut_shouldNotSplitCodePoints() {
 		// When
-		String text = NewsSanitizer.toPlainText("😀".repeat(20), 5);
+		String text = NewsSanitizer.toPlainText("\uD83D\uDE00".repeat(20), 5);
 
 		// Then
 		assertThat(text.codePointCount(0, text.length())).isLessThanOrEqualTo(5);
-		assertThat(text).endsWith("…").doesNotContain("�");
+		assertThat(text).endsWith("\u2026").doesNotContain("\uFFFD");
 		assertThat(Character.isLowSurrogate(text.charAt(0))).isFalse();
 	}
 

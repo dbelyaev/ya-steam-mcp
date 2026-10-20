@@ -31,7 +31,7 @@ public final class NewsSanitizer {
 
 	private static final Pattern NEWLINE_RUNS = Pattern.compile("\\s*\\n\\s*");
 
-	private static final String ELLIPSIS = "…";
+	private static final String ELLIPSIS = "\u2026";
 
 	private NewsSanitizer() {
 	}
