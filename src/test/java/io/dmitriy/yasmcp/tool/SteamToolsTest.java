@@ -130,7 +130,7 @@ class SteamToolsTest {
 	@Test
 	void getPlaytime_whenServiceReturnsPlaytime_shouldWrapIt() {
 		// Given
-		var playtime = new Playtime(620, "Portal 2", 740, null, null, null, Playtime.SOURCE);
+		var playtime = new Playtime(620, "Portal 2", 740, null, null, null, Playtime.SOURCE_ENDPOINT);
 		when(libraryService.getPlaytime(620L)).thenReturn(Result.complete(playtime));
 
 		// When
