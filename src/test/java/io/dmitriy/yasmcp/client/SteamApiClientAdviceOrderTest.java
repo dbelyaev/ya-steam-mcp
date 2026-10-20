@@ -26,12 +26,12 @@ class SteamApiClientAdviceOrderTest {
 
 	@Test
 	void retrySleep_withConcurrencyLimitOfOne_shouldNotHoldTheSlot() throws Exception {
-		// Given: limit 1, one retry after 400ms, upstream always answers 500 immediately
+		// Given: limit 1, one retry after 1000ms, upstream always answers 500 immediately
 		var server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
 		server.start();
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(500)));
 		var api = new SteamProperties.Api(URI.create("http://localhost:" + server.port()), "k", "76561197960287930",
-				Duration.ofSeconds(1), Duration.ofSeconds(2), 1, Duration.ofMillis(400), Duration.ofSeconds(30), 1,
+				Duration.ofSeconds(1), Duration.ofSeconds(2), 1, Duration.ofMillis(1000), Duration.ofSeconds(30), 1,
 				"english", true);
 		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
 		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();
@@ -49,9 +49,9 @@ class SteamApiClientAdviceOrderTest {
 			long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 			pool.shutdown();
 
-			// Then: sleeps overlap (~450ms). If the slot were held across the sleep, calls would
-			// serialize to ~900ms.
-			assertThat(elapsedMs).isLessThan(750);
+			// Then: sleeps overlap (about 1.05 s). If the slot were held across the sleep, the calls would
+			// serialize to about 2.1 s. The 1 s delay keeps the two outcomes far apart under CPU load.
+			assertThat(elapsedMs).isLessThan(1700);
 		}
 		finally {
 			server.stop();

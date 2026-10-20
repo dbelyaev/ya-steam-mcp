@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -22,7 +22,7 @@ import io.dmitriy.yasmcp.model.SteamException;
 
 /** Guards against Boot's own HTTP-service property configurers overriding our transport settings. */
 @McpSpringBootTest(properties = { "steam.api.key=k", "steam.api.steam-id=76561197960287930", "steam.api.retries=0",
-		"steam.api.read-timeout=300ms", "steam.api.allow-insecure-test-base-url=true",
+		"steam.api.read-timeout=1s", "steam.api.allow-insecure-test-base-url=true",
 		"spring.http.serviceclient.steam.base-url=https://evil.example" })
 class SteamClientBootWiringTest {
 
@@ -31,9 +31,9 @@ class SteamClientBootWiringTest {
 	@Autowired
 	SteamApiClient client;
 
-	@BeforeAll
-	static void start() {
-		SERVER.start();
+	@BeforeEach
+	void resetStubs() {
+		SERVER.resetAll();
 	}
 
 	@AfterAll
@@ -43,6 +43,7 @@ class SteamClientBootWiringTest {
 
 	@DynamicPropertySource
 	static void baseUrl(DynamicPropertyRegistry registry) {
+		// runs while the context is created, i.e. before any test method
 		SERVER.start();
 		registry.add("steam.api.base-url", () -> "http://localhost:" + SERVER.port());
 	}
@@ -51,7 +52,7 @@ class SteamClientBootWiringTest {
 	void getOwnedGames_whenUpstreamIsSlow_shouldHonorConfiguredReadTimeout() {
 		// Given
 		SERVER.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
-			.willReturn(aResponse().withStatus(200).withBody("{\"response\":{}}").withFixedDelay(2000)));
+			.willReturn(aResponse().withStatus(200).withBody("{\"response\":{}}").withFixedDelay(8000)));
 
 		// When
 		long start = System.nanoTime();
@@ -61,7 +62,8 @@ class SteamClientBootWiringTest {
 		// Then
 		thrown.isInstanceOfSatisfying(SteamException.class,
 				ex -> assertThat(ex.code()).isEqualTo(ErrorCode.UPSTREAM_UNAVAILABLE));
-		assertThat(elapsedMs).isLessThan(1500);
+		// 1s configured timeout vs an 8s upstream delay: far apart so scheduler noise cannot flip the result
+		assertThat(elapsedMs).isLessThan(5000);
 	}
 
 	@Test
