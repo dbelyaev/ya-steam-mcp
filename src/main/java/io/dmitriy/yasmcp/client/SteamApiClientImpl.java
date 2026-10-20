@@ -1,5 +1,6 @@
 package io.dmitriy.yasmcp.client;
 
+import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -160,27 +161,21 @@ public class SteamApiClientImpl implements SteamApiClient {
 	}
 
 	/**
-	 * One round trip. A class rather than a record because a record compares and prints its array by
-	 * identity (Sonar S6218); {@code toString} deliberately leaves the body out, since it is untrusted
+	 * One round trip. A record holding an array, so {@code equals}/{@code hashCode} compare the content
+	 * (Sonar S6218), while {@code toString} deliberately reports only the body length: the body is untrusted
 	 * upstream content that must never reach a log. {@code Retry-After} is not kept: 429 is not retried (D11).
+	 * Package-private so the guarantees can be tested.
 	 */
-	private static final class Outcome {
+	record Outcome(int status, byte @Nullable [] body) {
 
-		private final int status;
-
-		private final byte @Nullable [] body;
-
-		Outcome(int status, byte @Nullable [] body) {
-			this.status = status;
-			this.body = body;
+		@Override
+		public boolean equals(@Nullable Object other) {
+			return other instanceof Outcome that && status == that.status && Arrays.equals(body, that.body);
 		}
 
-		int status() {
-			return status;
-		}
-
-		byte @Nullable [] body() {
-			return body;
+		@Override
+		public int hashCode() {
+			return 31 * Integer.hashCode(status) + Arrays.hashCode(body);
 		}
 
 		@Override
