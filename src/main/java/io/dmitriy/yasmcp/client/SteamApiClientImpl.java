@@ -105,13 +105,12 @@ public class SteamApiClientImpl implements SteamApiClient {
 	private Outcome attempt(String endpoint, Supplier<ResponseEntity<byte[]>> call) {
 		try {
 			ResponseEntity<byte[]> response = call.get();
-			return new Outcome(response.getStatusCode().value(), response.getHeaders().getFirst("Retry-After"),
-					bounded(response.getBody()));
+			return new Outcome(response.getStatusCode().value(), bounded(response.getBody()));
 		}
 		catch (ResourceAccessException ex) {
 			// message contains the request URI incl. key: log only the exception class
 			log.warn("Steam {} I/O failure: {}", endpoint, ex.getCause() != null ? ex.getCause().getClass().getName() : "unknown");
-			return new Outcome(-1, null, null);
+			return new Outcome(-1, null);
 		}
 		catch (RuntimeException ex) {
 			log.warn("Steam {} request failed: {}", endpoint, ex.getClass().getName());
@@ -161,7 +160,35 @@ public class SteamApiClientImpl implements SteamApiClient {
 		});
 	}
 
-	private record Outcome(int status, @Nullable String retryAfterHeader, byte @Nullable [] body) {
+	/**
+	 * One round trip. A class rather than a record because a record compares and prints its array by
+	 * identity (Sonar S6218); {@code toString} deliberately leaves the body out, since it is untrusted
+	 * upstream content that must never reach a log. {@code Retry-After} is not kept: 429 is not retried (D11).
+	 */
+	private static final class Outcome {
+
+		private final int status;
+
+		private final byte @Nullable [] body;
+
+		Outcome(int status, byte @Nullable [] body) {
+			this.status = status;
+			this.body = body;
+		}
+
+		int status() {
+			return status;
+		}
+
+		byte @Nullable [] body() {
+			return body;
+		}
+
+		@Override
+		public String toString() {
+			return "Outcome[status=" + status + ", body=" + (body == null ? "none" : body.length + " bytes") + "]";
+		}
+
 	}
 
 }
