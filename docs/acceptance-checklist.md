@@ -1,6 +1,6 @@
 # Acceptance checklist (spec section 12)
 
-Verified on 2026-10-20 against commit `HEAD` of branch `main`. "Evidence" names the automated check or the command that
+Verified on 2026-10-20 against commit `b4e8cd1` on branch `main` (the checklist file itself is the only later change). "Evidence" names the automated check or the command that
 was run; everything is reproducible with `./mvnw -B clean verify`.
 
 | # | Item | Status | Evidence |
