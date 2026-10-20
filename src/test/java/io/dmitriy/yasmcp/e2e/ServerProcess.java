@@ -9,10 +9,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 /** The built jar as a child process: raw STDIO access, captured stdout/stderr, exit code. */
 final class ServerProcess implements AutoCloseable {
@@ -21,9 +22,9 @@ final class ServerProcess implements AutoCloseable {
 
 	private final BufferedWriter stdin;
 
-	private final List<String> stdout = Collections.synchronizedList(new ArrayList<>());
+	private final LineBuffer stdout = new LineBuffer();
 
-	private final List<String> stderr = Collections.synchronizedList(new ArrayList<>());
+	private final LineBuffer stderr = new LineBuffer();
 
 	private final Thread outReader;
 
@@ -57,7 +58,7 @@ final class ServerProcess implements AutoCloseable {
 		return new ServerProcess(builder.start());
 	}
 
-	private static Thread pump(Process process, boolean err, List<String> sink) {
+	private static Thread pump(Process process, boolean err, LineBuffer sink) {
 		Thread thread = new Thread(() -> {
 			try (var reader = new BufferedReader(new InputStreamReader(err ? process.getErrorStream() : process.getInputStream(),
 					StandardCharsets.UTF_8))) {
@@ -96,27 +97,63 @@ final class ServerProcess implements AutoCloseable {
 		return process.exitValue();
 	}
 
+	/** Blocks until at least {@code count} stdout lines arrived or the timeout passed; no polling. */
 	boolean awaitStdoutLines(int count, Duration timeout) throws InterruptedException {
-		long end = System.nanoTime() + timeout.toNanos();
-		while (System.nanoTime() < end) {
-			if (stdout.size() >= count) {
-				return true;
-			}
-			Thread.sleep(50);
-		}
-		return stdout.size() >= count;
+		return stdout.awaitSize(count, timeout);
 	}
 
 	List<String> stdoutLines() {
-		synchronized (stdout) {
-			return List.copyOf(stdout);
-		}
+		return stdout.snapshot();
 	}
 
 	String stderrText() {
-		synchronized (stderr) {
-			return String.join("\n", stderr);
+		return String.join("\n", stderr.snapshot());
+	}
+
+	/** Lines written by one reader thread and read by the test thread; waiters are woken on every line. */
+	private static final class LineBuffer {
+
+		private final ReentrantLock lock = new ReentrantLock();
+
+		private final Condition changed = lock.newCondition();
+
+		private final List<String> lines = new ArrayList<>();
+
+		void add(String line) {
+			lock.lock();
+			try {
+				lines.add(line);
+				changed.signalAll();
+			}
+			finally {
+				lock.unlock();
+			}
 		}
+
+		List<String> snapshot() {
+			lock.lock();
+			try {
+				return List.copyOf(lines);
+			}
+			finally {
+				lock.unlock();
+			}
+		}
+
+		boolean awaitSize(int count, Duration timeout) throws InterruptedException {
+			long remaining = timeout.toNanos();
+			lock.lockInterruptibly();
+			try {
+				while (lines.size() < count && remaining > 0) {
+					remaining = changed.awaitNanos(remaining);
+				}
+				return lines.size() >= count;
+			}
+			finally {
+				lock.unlock();
+			}
+		}
+
 	}
 
 	@Override
