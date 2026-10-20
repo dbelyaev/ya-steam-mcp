@@ -22,6 +22,8 @@
 	</licenses>
 	<properties>
 		<java.version>25</java.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
 		<!-- tests tagged "live" call the real Steam API; they run only with -Plive -->
 		<surefire.groups></surefire.groups>
 		<surefire.excludedGroups>live</surefire.excludedGroups>
