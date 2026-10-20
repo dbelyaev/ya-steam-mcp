@@ -1,6 +1,5 @@
 package io.dmitriy.yasmcp.client;
 
-import java.io.IOException;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -130,7 +129,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 		try {
 			parsed = jsonMapper.readValue(body, type);
 		}
-		catch (JacksonException ex) {
+		catch (JacksonException _) {
 			// Jackson messages quote payload fragments: do not propagate
 			throw failure(ErrorCode.UPSTREAM_BAD_RESPONSE);
 		}

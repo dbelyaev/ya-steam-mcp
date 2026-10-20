@@ -3,6 +3,7 @@ package io.dmitriy.yasmcp.service;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -228,7 +229,7 @@ class AchievementServiceTest {
 		assertThat(result.data().available()).isFalse();
 		assertThat(result.data().achievements()).isEmpty();
 		assertThat(result.warnings()).singleElement().asString().contains("zero is not implied");
-		verify(client, org.mockito.Mockito.never()).getSchemaForGame(620, "english");
+		verify(client, never()).getSchemaForGame(620, "english");
 	}
 
 	@Test

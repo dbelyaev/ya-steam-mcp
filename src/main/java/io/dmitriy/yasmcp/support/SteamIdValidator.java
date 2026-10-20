@@ -26,7 +26,7 @@ public final class SteamIdValidator {
 		try {
 			Long.parseUnsignedLong(value);
 		}
-		catch (NumberFormatException ex) {
+		catch (NumberFormatException _) {
 			return false;
 		}
 		return true;

@@ -58,7 +58,7 @@ class LiveSteamSmokeTest {
 		var games = recent.getRecentGames(1).data().games();
 
 		// Then
-		assertThat(games.size()).isLessThanOrEqualTo(1);
+		assertThat(games).hasSizeLessThanOrEqualTo(1);
 	}
 
 	@Test
@@ -67,7 +67,7 @@ class LiveSteamSmokeTest {
 		var items = news.getNews(PUBLIC_APPID, 2, 200).data().items();
 
 		// Then
-		assertThat(items.size()).isLessThanOrEqualTo(2);
+		assertThat(items).hasSizeLessThanOrEqualTo(2);
 		boolean markupFree = items.stream()
 			.map(i -> i.contentPreview() == null ? "" : i.contentPreview())
 			.noneMatch(text -> text.contains("<") || text.contains("[/") || text.length() > 200);

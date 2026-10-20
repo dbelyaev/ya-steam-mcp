@@ -59,11 +59,11 @@ class SteamToolsContractTest {
 
 		// Then
 		assertThat(required(tool)).isEmpty();
-		assertThat(property(tool, "query").get("type")).isEqualTo("string");
-		assertThat(property(tool, "sortBy").get("type")).isEqualTo("string");
-		assertThat(property(tool, "offset").get("type")).isEqualTo("integer");
-		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
-		assertThat(property(tool, "includeNeverPlayed").get("type")).isEqualTo("boolean");
+		assertThat(property(tool, "query")).containsEntry("type", "string");
+		assertThat(property(tool, "sortBy")).containsEntry("type", "string");
+		assertThat(property(tool, "offset")).containsEntry("type", "integer");
+		assertThat(property(tool, "limit")).containsEntry("type", "integer");
+		assertThat(property(tool, "includeNeverPlayed")).containsEntry("type", "boolean");
 	}
 
 	@Test
@@ -73,7 +73,7 @@ class SteamToolsContractTest {
 
 		// Then
 		assertThat(required(tool)).containsExactly("appid");
-		assertThat(property(tool, "appid").get("type")).isEqualTo("integer");
+		assertThat(property(tool, "appid")).containsEntry("type", "integer");
 	}
 
 	@Test
@@ -83,7 +83,7 @@ class SteamToolsContractTest {
 
 		// Then
 		assertThat(required(tool)).isEmpty();
-		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
+		assertThat(property(tool, "limit")).containsEntry("type", "integer");
 	}
 
 	@Test
@@ -93,9 +93,9 @@ class SteamToolsContractTest {
 
 		// Then
 		assertThat(required(tool)).containsExactly("appid");
-		assertThat(property(tool, "language").get("type")).isEqualTo("string");
-		assertThat(property(tool, "includeLocked").get("type")).isEqualTo("boolean");
-		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
+		assertThat(property(tool, "language")).containsEntry("type", "string");
+		assertThat(property(tool, "includeLocked")).containsEntry("type", "boolean");
+		assertThat(property(tool, "limit")).containsEntry("type", "integer");
 	}
 
 	@Test
@@ -105,8 +105,8 @@ class SteamToolsContractTest {
 
 		// Then
 		assertThat(required(tool)).containsExactly("appid");
-		assertThat(property(tool, "limit").get("type")).isEqualTo("integer");
-		assertThat(property(tool, "maxContentChars").get("type")).isEqualTo("integer");
+		assertThat(property(tool, "limit")).containsEntry("type", "integer");
+		assertThat(property(tool, "maxContentChars")).containsEntry("type", "integer");
 		assertThat(tool.description()).contains("untrusted");
 	}
 
@@ -117,7 +117,7 @@ class SteamToolsContractTest {
 
 		// Then
 		assertThat(required(tool)).containsExactly("appid");
-		assertThat(property(tool, "language").get("type")).isEqualTo("string");
+		assertThat(property(tool, "language")).containsEntry("type", "string");
 	}
 
 }

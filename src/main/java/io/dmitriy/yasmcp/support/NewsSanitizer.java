@@ -63,7 +63,7 @@ public final class NewsSanitizer {
 			boolean ok = "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null && uri.getUserInfo() == null;
 			return ok ? uri.toString() : null;
 		}
-		catch (URISyntaxException ex) {
+		catch (URISyntaxException _) {
 			return null;
 		}
 	}

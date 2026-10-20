@@ -67,7 +67,7 @@ class StdioHygieneIT {
 			String everything = String.join("\n", server.stdoutLines()) + "\n" + server.stderrText();
 			assertThat(everything).doesNotContain(FakeSteam.API_KEY).doesNotContain(FakeSteam.BODY_SECRET);
 			assertThat(server.stderrText()).as("logs go to stderr").contains("tool=get_library outcome=ok");
-			assertThat(exit).as("closing stdin ends the process").isEqualTo(0);
+			assertThat(exit).as("closing stdin ends the process").isZero();
 		}
 	}
 
@@ -93,7 +93,7 @@ class StdioHygieneIT {
 				.findFirst().orElseThrow();
 			assertThat(library.at("/result/isError").asBoolean()).isTrue();
 			assertThat(library.at("/result/content/0/text").asString()).contains("CONFIGURATION_MISSING");
-			assertThat(exit).isEqualTo(0);
+			assertThat(exit).isZero();
 		}
 	}
 
@@ -111,7 +111,7 @@ class StdioHygieneIT {
 			long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
 			// Then
-			assertThat(exit).isEqualTo(0);
+			assertThat(exit).isZero();
 			assertThat(elapsedMs).isLessThan(15_000);
 			assertOnlyJsonRpcFrames(server.stdoutLines());
 		}
@@ -149,7 +149,7 @@ class StdioHygieneIT {
 			List<Integer> ids = server.stdoutLines().stream().map(MAPPER::readTree).map(f -> f.path("id").asInt()).sorted().toList();
 			assertThat(ids).doesNotHaveDuplicates().contains(1).hasSize(1 + calls);
 			assertThat(server.stderrText()).doesNotContain("Failed to enqueue message").doesNotContain(FakeSteam.API_KEY);
-			assertThat(exit).isEqualTo(0);
+			assertThat(exit).isZero();
 		}
 	}
 

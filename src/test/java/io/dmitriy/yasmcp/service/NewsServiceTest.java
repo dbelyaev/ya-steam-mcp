@@ -2,6 +2,7 @@ package io.dmitriy.yasmcp.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -187,7 +188,7 @@ class NewsServiceTest {
 		// When / Then
 		org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.getNews(620L, null, chars))
 			.isInstanceOfSatisfying(SteamException.class, ex -> assertThat(ex.code()).isEqualTo(ErrorCode.INVALID_ARGUMENT));
-		verify(client, org.mockito.Mockito.never()).getNewsForApp(org.mockito.ArgumentMatchers.anyLong(), anyInt(),
+		verify(client, never()).getNewsForApp(org.mockito.ArgumentMatchers.anyLong(), anyInt(),
 				org.mockito.ArgumentMatchers.any());
 	}
 

@@ -53,9 +53,7 @@ class SourceHygieneTest {
 		String xml = Files.readString(MAIN.resolve("resources/logback-spring.xml"));
 
 		// Then
-		assertThat(xml).contains("<target>System.err</target>");
-		assertThat(xml).doesNotContain("System.out");
-		assertThat(xml).contains("NopStatusListener");
+		assertThat(xml).contains("<target>System.err</target>").doesNotContain("System.out").contains("NopStatusListener");
 	}
 
 	@Test
@@ -64,10 +62,10 @@ class SourceHygieneTest {
 		String yml = Files.readString(MAIN.resolve("resources/application.yml"));
 
 		// Then
-		assertThat(yml).contains("banner-mode: \"off\"");
-		assertThat(yml).contains("key: ${STEAM_API_KEY:}");
-		assertThat(yml).contains("steam-id: ${STEAM_ID:}");
-		assertThat(yml).doesNotContainPattern("(?i)key:\\s*[A-F0-9]{32}");
+		assertThat(yml).contains("banner-mode: \"off\"")
+			.contains("key: ${STEAM_API_KEY:}")
+			.contains("steam-id: ${STEAM_ID:}")
+			.doesNotContainPattern("(?i)key:\\s*[A-F0-9]{32}");
 	}
 
 }
