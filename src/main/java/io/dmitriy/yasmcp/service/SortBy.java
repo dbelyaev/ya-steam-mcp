@@ -36,7 +36,7 @@ public enum SortBy {
 		try {
 			return valueOf(value.trim().toUpperCase(Locale.ROOT));
 		}
-		catch (IllegalArgumentException ex) {
+		catch (IllegalArgumentException _) {
 			throw new SteamException(ErrorCode.INVALID_ARGUMENT,
 					"sortBy must be one of NAME_ASC, NAME_DESC, PLAYTIME_ASC, PLAYTIME_DESC");
 		}
