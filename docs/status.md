@@ -1,5 +1,5 @@
 # Status
-- Done: P0; P1; P1R; P2; P3; P4 (cache, secret-leak and source hygiene tests, STDIO end-to-end ITs, serial MCP handling fix D18). 264 unit/integration + 14 failsafe tests.
-- Next: P5 release (README, api-mapping.md, test-plan.md, `live` smoke test tag, GitHub Actions on JDK 25, LICENSE choice, acceptance checklist). Waiting for go.
-- Blockers: none. LICENSE needs a user decision.
-- Notes: D18 (SDK drops concurrent STDIO responses), D19 (cache), D20 (IT setup).
+- Done: P0-P5. Release candidate 0.1.0: six tools, cache, retry, STDIO end-to-end tests, CI, Apache-2.0 license, README, acceptance checklist.
+- Verified: `./mvnw -B clean verify` on JDK 25 (264 surefire + 14 failsafe tests, 4 live tests skipped), jar `target/steam-mcp-server-0.1.0-SNAPSHOT.jar`.
+- Open for the owner: run `./mvnw -Plive test` once with your own key and SteamID; push to GitHub to see CI run; optional MCP Inspector check (see docs/acceptance-checklist.md).
+- Blockers: none.

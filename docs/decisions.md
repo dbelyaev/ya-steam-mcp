@@ -79,3 +79,9 @@ MCP Java SDK 2.0.0 `StdioServerTransportProvider` writes through `Sinks.many().u
 
 ## D20 — Tests in the surefire fork and integration tests (2026-10-19)
 `*IT` classes run with failsafe after `package` against `target/steam-mcp-server-<version>.jar` (`e2e.jar` system property), with WireMock as Steam and `STEAM_API_BASE_URL` / `STEAM_API_ALLOW_INSECURE_TEST_BASE_URL` / `STEAM_API_RETRY_DELAY` as child environment (relaxed binding). Child JVMs use `-XX:+DisplayVMOutputToStderr`.
+
+## D21 — Release packaging and license (2026-10-20)
+Apache License 2.0 (`LICENSE`, `NOTICE`; owner decision). Version `0.1.0-SNAPSHOT`; the MCP `serverInfo.version` is filtered from the pom (`@project.version@`). Optional `live` tests are tagged and excluded through surefire `excludedGroups`, enabled by `-Plive`; a manual-only workflow (`live.yml`) can run them with repository secrets. CI (`ci.yml`) runs `clean verify` on JDK 25 with read-only permissions and no secrets. Runtime dependency licenses reviewed in `docs/dependency-licenses.md`.
+
+## D22 — Deviations from the specification, summary (2026-10-20)
+Intentional, each with details above: package/coordinates (D1), annotation package (D2), `@Retryable` and no server-side 429 retry or `Retry-After` handling, spec updated to v1.3 (D11, D11a), declarative HTTP client (D12), capability services instead of one `SteamService` (D13), no startup failure on missing credentials (D14, D6), `VISIBLE`/`UNKNOWN` visibility values and null `iconUrl` (D15), serial MCP handling because of the SDK STDIO sink (D18), no tool output schemas (D7), `maxlength=1` for a news body of 0 characters (D17). None changes a security invariant of the specification.
