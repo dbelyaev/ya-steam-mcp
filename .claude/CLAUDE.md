@@ -12,14 +12,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current State
 
-- Fresh scaffold: single `YasmcpApplication` (package `io.dmitriy.yasmcp`), one context-load test, and only `spring-boot-starter` + `spring-boot-starter-test` dependencies. No web, MCP, or persistence layers exist yet.
-- Add starters to `pom.xml` as features land; use the `mcp-server` skill when exposing MCP tools/resources/prompts.
+- Release candidate 0.1.0: a read-only Steam MCP server over STDIO (package `io.dmitriy.yasmcp`, jar `target/steam-mcp-server-<version>.jar`). Six tools in `tool/SteamTools`, services in `service/`, Steam access in `client/`, specification in `.tasks/steam-mcp-server-spec.md` (v1.3), decisions and deviations in `docs/decisions.md`.
+- Stack beyond the starter: Spring AI MCP server starter (annotations), `RestClient` with a declarative `SteamWebApi`, Caffeine, Jakarta validation, JSpecify + NullAway (main and tests), WireMock, failsafe end-to-end tests.
+- Hard rules: stdout carries MCP frames only (no `System.out`, logs to stderr); the Steam API key must never reach logs, results, `toString` or exceptions; no web starter on the classpath (it changes MCP transport selection).
 
 ## Commands
 
-- Build and verify: `./mvnw verify`
-- Unit tests: `./mvnw test`
+- Build and verify (unit + end-to-end, needs JDK 25, no Steam key): `./mvnw -B clean verify`
+- Unit and Spring tests: `./mvnw test`
 - Single test: `./mvnw -Dtest=ClassName test`
+- Live smoke test with your own key: `STEAM_API_KEY=... STEAM_ID=... ./mvnw -Plive test`
 
 ## Conventions
 
