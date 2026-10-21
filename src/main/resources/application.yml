@@ -1,6 +1,6 @@
 spring:
   application:
-    name: yasmcp
+    name: ya-steam-mcp
   main:
     web-application-type: none
     banner-mode: "off"
@@ -8,7 +8,7 @@ spring:
     mcp:
       server:
         enabled: true
-        name: steam-mcp-server
+        name: ya-steam-mcp
         version: "@project.version@"
         type: SYNC
         stdio: true

@@ -88,7 +88,7 @@ class SteamMcpServerIT {
 		var init = client.initialize();
 
 		// Then
-		assertThat(init.serverInfo().name()).isEqualTo("steam-mcp-server");
+		assertThat(init.serverInfo().name()).isEqualTo("ya-steam-mcp");
 		assertThat(init.serverInfo().version()).as("filtered from the pom, not a literal placeholder")
 			.matches("\\d+\\.\\d+\\.\\d+.*");
 		assertThat(init.capabilities().tools()).isNotNull();
