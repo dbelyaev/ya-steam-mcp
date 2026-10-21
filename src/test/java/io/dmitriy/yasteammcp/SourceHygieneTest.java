@@ -28,7 +28,7 @@ class SourceHygieneTest {
 	}
 
 	@Test
-	void mainSources_shouldNotWriteToConsoleDirectly() throws IOException {
+	void mainSources_whenScanned_shouldNotWriteToConsoleDirectly() throws IOException {
 		// Given
 		List<Path> java = sources(".*\\.java");
 
@@ -48,7 +48,7 @@ class SourceHygieneTest {
 	}
 
 	@Test
-	void logbackConfig_shouldSendEverythingToStderrAndSilenceStatusOutput() throws IOException {
+	void logbackConfig_whenRead_shouldSendEverythingToStderrAndSilenceStatusOutput() throws IOException {
 		// Given
 		String xml = Files.readString(MAIN.resolve("resources/logback-spring.xml"));
 
@@ -57,7 +57,7 @@ class SourceHygieneTest {
 	}
 
 	@Test
-	void applicationConfig_shouldDisableBannerAndNeverHardCodeCredentials() throws IOException {
+	void applicationConfig_whenRead_shouldDisableBannerAndNeverHardCodeCredentials() throws IOException {
 		// Given
 		String yml = Files.readString(MAIN.resolve("resources/application.yml"));
 
@@ -74,7 +74,7 @@ class SourceHygieneTest {
 	 * (non-ASCII text goes in as unicode escapes) makes that impossible whatever charset a scanner assumes.
 	 */
 	@Test
-	void sourceTree_shouldBePureAsciiSoNoScannerCharsetCanMisreadIt() throws IOException {
+	void sourceTree_whenScanned_shouldBePureAsciiSoNoScannerCharsetCanMisreadIt() throws IOException {
 		// Given
 		List<String> offenders = new java.util.ArrayList<>();
 		try (Stream<Path> files = Files.walk(Path.of("src"))) {
