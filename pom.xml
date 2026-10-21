@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>io.dmitriy</groupId>
-	<artifactId>yasmcp</artifactId>
+	<artifactId>ya-steam-mcp</artifactId>
 	<version>0.1.0-SNAPSHOT</version>
-	<name>steam-mcp-server</name>
+	<name>ya-steam-mcp</name>
 	<description>Local, read-only Steam MCP server over STDIO (Spring Boot, Spring AI)</description>
 	<licenses>
 		<license>
@@ -76,7 +76,7 @@
 	</dependencies>
 
 	<build>
-		<finalName>steam-mcp-server-${project.version}</finalName>
+		<finalName>ya-steam-mcp-${project.version}</finalName>
 		<plugins>
 			<!-- exposes ${org.mockito:mockito-core:jar} for the Mockito agent (JDK 25 forbids dynamic self-attach) -->
 			<plugin>

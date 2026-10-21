@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current State
 
-- Release candidate 0.1.0: a read-only Steam MCP server over STDIO (package `io.dmitriy.yasmcp`, jar `target/steam-mcp-server-<version>.jar`). Six tools in `tool/SteamTools`, services in `service/`, Steam access in `client/`, specification in `.tasks/steam-mcp-server-spec.md` (v1.3), decisions and deviations in `docs/decisions.md`.
+- Release candidate 0.1.0: a read-only Steam MCP server over STDIO (package `io.dmitriy.yasteammcp`, jar `target/ya-steam-mcp-<version>.jar`). Six tools in `tool/SteamTools`, services in `service/`, Steam access in `client/`, specification in `.tasks/steam-mcp-server-spec.md` (v1.3), decisions and deviations in `docs/decisions.md`.
 - Stack beyond the starter: Spring AI MCP server starter (annotations), `RestClient` with a declarative `SteamWebApi`, Caffeine, Jakarta validation, JSpecify + NullAway (main and tests), WireMock, failsafe end-to-end tests.
 - Hard rules: stdout carries MCP frames only (no `System.out`, logs to stderr); the Steam API key must never reach logs, results, `toString` or exceptions; no web starter on the classpath (it changes MCP transport selection).
 

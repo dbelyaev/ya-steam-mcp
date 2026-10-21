@@ -42,8 +42,8 @@ jobs:
       - name: Upload jar
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: steam-mcp-server-jar
-          path: target/steam-mcp-server-*.jar
+          name: ya-steam-mcp-jar
+          path: target/ya-steam-mcp-*.jar
           if-no-files-found: error
           retention-days: 14
 
