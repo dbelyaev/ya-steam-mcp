@@ -92,4 +92,4 @@ The project and repository were renamed from `yasmcp` to `ya-steam-mcp` (owner d
 - Java package `io.dmitriy.yasteammcp` and application class `YaSteamMcpApplication` (a hyphen is not legal in a package name); files moved with `git mv`.
 - `.tasks/steam-mcp-server-spec.md` keeps its name: it is the original requirements document.
 - Host configurations only break if they hard-code the old jar path (`steam-mcp-server-*.jar`); the host-side server key (for example `steam`) is chosen by the user and is unaffected.
-- Not changed by this PR: the GitHub repository name (renamed separately after merge; GitHub redirects the old URL), the SonarCloud project key `dbelyaev_yasmcp` (set in SonarCloud, can be kept), the local folder name.
+- Not changed by this PR: the GitHub repository name (renamed separately after merge; GitHub redirects the old URL), the SonarCloud project (its key was changed by SonarCloud itself to `dbelyaev_ya-steam-mcp` when the repository was renamed; verified 2026-10-21 through the public API), the local folder name.
