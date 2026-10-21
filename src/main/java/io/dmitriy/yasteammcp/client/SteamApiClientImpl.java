@@ -170,7 +170,8 @@ public class SteamApiClientImpl implements SteamApiClient {
 
 		@Override
 		public boolean equals(@Nullable Object other) {
-			return other instanceof Outcome that && status == that.status && Arrays.equals(body, that.body);
+			return other instanceof Outcome(int otherStatus, var otherBody) && status == otherStatus
+					&& Arrays.equals(body, otherBody);
 		}
 
 		@Override
