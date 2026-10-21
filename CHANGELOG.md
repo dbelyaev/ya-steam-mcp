@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Project renamed from `yasmcp` to `ya-steam-mcp`: artifact, jar (`ya-steam-mcp-<version>.jar`), MCP server name, Java package `io.dmitriy.yasteammcp`. Update host configurations that hard-code the old jar path.
+
 ## [0.1.0] - 2026-10-20 (release candidate)
 
 ### Added

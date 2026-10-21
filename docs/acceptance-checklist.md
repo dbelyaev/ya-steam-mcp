@@ -6,7 +6,7 @@ was run; everything is reproducible with `./mvnw -B clean verify`.
 | # | Item | Status | Evidence |
 |---|---|---|---|
 | 1 | `./mvnw -B clean verify` succeeds with JDK 25; `java -version` and `mvn -version` confirm it | Done | Run locally on Temurin 25 / Maven 3.10.0 (`.mvn/wrapper`); CI repeats `java -version` and fails unless it says 25 |
-| 2 | `java -jar target/steam-mcp-server-*.jar` starts in STDIO mode | Done | `StdioHygieneIT`, `SteamMcpServerIT` start the built jar; also works with no configuration at all |
+| 2 | `java -jar target/ya-steam-mcp-*.jar` starts in STDIO mode | Done | `StdioHygieneIT`, `SteamMcpServerIT` start the built jar; also works with no configuration at all |
 | 3 | A real MCP client completes handshake and `tools/list` | Done, with a note | The official MCP Java SDK client (`SteamMcpServerIT`) completes both. MCP Inspector was not run (it would download an unpinned npm package); `npx @modelcontextprotocol/inspector --cli java -jar <jar> --method tools/list` can be used to double-check |
 | 4 | Exactly the six tools are registered | Done | `SteamToolsContractTest.listTools_...`, `SteamMcpServerIT.listTools_...` |
 | 5 | All six tools expose correct input/output schemas, limits and read-only hints | Done, deviation | Input schemas, required arrays and hints asserted. **No output schema**: tools return `CallToolResult` so failures can set `isError` (D7) |

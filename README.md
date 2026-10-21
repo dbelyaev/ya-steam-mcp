@@ -1,4 +1,4 @@
-# steam-mcp-server
+# ya-steam-mcp
 
 A local, **read-only** [Model Context Protocol](https://modelcontextprotocol.io) server that lets an AI client
 look at your own Steam library, playtime, recent games, achievements and game news. It talks to the public
@@ -6,7 +6,7 @@ Steam Web API with **your own API key** and one configured SteamID64, over STDIO
 read cookies or passwords, touch the Steam client, or change anything on your account.
 
 Java 25, Spring Boot 4.1, Spring AI 2.0 (MCP server starter). Licensed under Apache 2.0.
-Not affiliated with Valve.
+Not affiliated with Valve. Formerly named `yasmcp`.
 
 ## Tools
 
@@ -80,7 +80,7 @@ JDK 25 is required (build, tests, CI and runtime).
 ```bash
 java -version          # must say 25
 ./mvnw -B clean verify # unit, client, Spring and end-to-end tests; no Steam key needed
-# result: target/steam-mcp-server-0.1.0-SNAPSHOT.jar
+# result: target/ya-steam-mcp-0.1.0-SNAPSHOT.jar
 ```
 
 ### 5. Register it with your MCP host
@@ -92,7 +92,7 @@ STDIO command, generic form (adapt the file format to your host):
   "mcpServers": {
     "steam": {
       "command": "java",
-      "args": ["-XX:+DisplayVMOutputToStderr", "-jar", "/absolute/path/steam-mcp-server-0.1.0-SNAPSHOT.jar"],
+      "args": ["-XX:+DisplayVMOutputToStderr", "-jar", "/absolute/path/ya-steam-mcp-0.1.0-SNAPSHOT.jar"],
       "env": {
         "STEAM_API_KEY": "<YOUR_KEY>",
         "STEAM_ID": "<YOUR_STEAM_ID64>"
@@ -111,13 +111,13 @@ restart Claude Desktop completely. Two things differ from a terminal:
 - Desktop is a GUI app and often does not see your shell `PATH`, so a bare `java` may be missing or be an older
   JDK. Use the full path to a **JDK 25** `java` as `command` (find it with `command -v java` or
   `/usr/libexec/java_home -v 25` on macOS, `where java` on Windows).
-- Use an absolute path to the jar, and on Windows escape backslashes in JSON (`C:\\tools\\steam-mcp-server.jar`).
+- Use an absolute path to the jar, and on Windows escape backslashes in JSON (`C:\\tools\\ya-steam-mcp.jar`).
 
 If the server does not show up, read Desktop's MCP log (macOS `~/Library/Logs/Claude/mcp-server-steam.log`); this
 server writes its own log lines (`tool=... outcome=...`) to stderr, which ends up there, and never prints your key.
 This was not tested against a Desktop install; the configuration format is Desktop's documented one.
 
-**Claude Code:** `claude mcp add steam -e STEAM_API_KEY=... -e STEAM_ID=... -- java -XX:+DisplayVMOutputToStderr -jar /absolute/path/steam-mcp-server-0.1.0-SNAPSHOT.jar`.
+**Claude Code:** `claude mcp add steam -e STEAM_API_KEY=... -e STEAM_ID=... -- java -XX:+DisplayVMOutputToStderr -jar /absolute/path/ya-steam-mcp-0.1.0-SNAPSHOT.jar`.
 Never commit a configuration that contains a real key.
 
 The server starts without a key or SteamID and without network access; tools then answer with

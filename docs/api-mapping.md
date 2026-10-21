@@ -2,7 +2,7 @@
 
 All calls go to `https://api.steampowered.com` (public host, regular user key). `partner.steam-api.com`
 is never used; the base URL is allowlisted at startup. Transport is the declarative
-`io.dmitriy.yasmcp.client.SteamWebApi`; parsing, retry and error mapping live in `SteamApiClientImpl`.
+`io.dmitriy.yasteammcp.client.SteamWebApi`; parsing, retry and error mapping live in `SteamApiClientImpl`.
 
 | MCP tool | Steam endpoint | Query parameters sent | Cache TTL |
 |---|---|---|---|

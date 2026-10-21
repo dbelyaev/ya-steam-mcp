@@ -1,6 +1,6 @@
 # Dependency licenses
 
-Runtime dependencies of `steam-mcp-server` (the executable jar), resolved with
+Runtime dependencies of `ya-steam-mcp` (the executable jar), resolved with
 `./mvnw dependency:list -DincludeScope=runtime` and read from each artifact's POM
 (2026-10-20, spec section 9.9). Test-only libraries (JUnit, AssertJ, Mockito, WireMock) are not shipped.
 

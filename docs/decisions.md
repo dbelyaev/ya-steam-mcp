@@ -78,10 +78,18 @@ MCP Java SDK 2.0.0 `StdioServerTransportProvider` writes through `Sinks.many().u
 `CachedSteamApiClient` (Caffeine, per-endpoint TTL from `steam.cache.*`, spec defaults 5m/2m/10m/24h/10m) wraps the retrying client (`@Primary`; the retrying bean is `steamApiClientDelegate`). Only successful answers that look complete are stored: never errors, empty owned-games, `success:false` or empty achievements, empty schema. Keys: SteamID, AppID, language, counts, never the API key. `meta.cached` is true only when every upstream read of the call was a cache hit; the signal travels via a `ScopedValue` (`CacheTrace`) bound in `ToolResults.run`, so service signatures are unchanged. No stale-while-error. `steam.cache.enabled=false` disables it.
 
 ## D20 — Tests in the surefire fork and integration tests (2026-10-19)
-`*IT` classes run with failsafe after `package` against `target/steam-mcp-server-<version>.jar` (`e2e.jar` system property), with WireMock as Steam and `STEAM_API_BASE_URL` / `STEAM_API_ALLOW_INSECURE_TEST_BASE_URL` / `STEAM_API_RETRY_DELAY` as child environment (relaxed binding). Child JVMs use `-XX:+DisplayVMOutputToStderr`.
+`*IT` classes run with failsafe after `package` against `target/ya-steam-mcp-<version>.jar` (`e2e.jar` system property), with WireMock as Steam and `STEAM_API_BASE_URL` / `STEAM_API_ALLOW_INSECURE_TEST_BASE_URL` / `STEAM_API_RETRY_DELAY` as child environment (relaxed binding). Child JVMs use `-XX:+DisplayVMOutputToStderr`.
 
 ## D21 — Release packaging and license (2026-10-20)
 Apache License 2.0 (`LICENSE`, `NOTICE`; owner decision). Version `0.1.0-SNAPSHOT`; the MCP `serverInfo.version` is filtered from the pom (`@project.version@`). Optional `live` tests are tagged and excluded through surefire `excludedGroups`, enabled by `-Plive`; a manual-only workflow (`live.yml`) can run them with repository secrets. CI (`ci.yml`) runs `clean verify` on JDK 25 with read-only permissions and no secrets. Runtime dependency licenses reviewed in `docs/dependency-licenses.md`.
 
 ## D22 — Deviations from the specification, summary (2026-10-20)
 Intentional, each with details above: package/coordinates (D1), annotation package (D2), `@Retryable` and no server-side 429 retry or `Retry-After` handling, spec updated to v1.3 (D11, D11a), declarative HTTP client (D12), capability services instead of one `SteamService` (D13), no startup failure on missing credentials (D14, D6), `VISIBLE`/`UNKNOWN` visibility values and null `iconUrl` (D15), serial MCP handling because of the SDK STDIO sink (D18), no tool output schemas (D7), `maxlength=1` for a news body of 0 characters (D17). None changes a security invariant of the specification.
+
+## D23 - Project renamed to ya-steam-mcp (2026-10-21)
+The project and repository were renamed from `yasmcp` to `ya-steam-mcp` (owner decision). Superseded names in earlier entries (D1, D8, D20) are kept as history.
+- Maven artifactId `ya-steam-mcp` (groupId unchanged, `io.dmitriy`); jar `ya-steam-mcp-<version>.jar`; Spring application name and MCP `serverInfo.name` `ya-steam-mcp`.
+- Java package `io.dmitriy.yasteammcp` and application class `YaSteamMcpApplication` (a hyphen is not legal in a package name); files moved with `git mv`.
+- `.tasks/steam-mcp-server-spec.md` keeps its name: it is the original requirements document.
+- Host configurations only break if they hard-code the old jar path (`steam-mcp-server-*.jar`); the host-side server key (for example `steam`) is chosen by the user and is unaffected.
+- Not changed by this PR: the GitHub repository name (renamed separately after merge; GitHub redirects the old URL), the SonarCloud project key `dbelyaev_yasmcp` (set in SonarCloud, can be kept), the local folder name.
