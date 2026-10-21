@@ -47,8 +47,7 @@ class LiveSteamSmokeTest {
 		var page = library.getLibrary(null, null, 0, 1, null).data();
 
 		// Then
-		boolean consistent = page.total() >= page.games().size();
-		assertThat(consistent).isTrue();
+		assertThat(page.total()).isGreaterThanOrEqualTo(page.games().size());
 		assertThat(page.visibilityStatus()).isNotNull();
 	}
 

@@ -2,6 +2,7 @@ package io.dmitriy.yasteammcp.client;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -91,6 +92,7 @@ class SteamClientBootWiringTest {
 
 		// Then: the request reached the validated steam.api.base-url, not the Boot group property
 		assertThat(response.response()).isNotNull();
+		SERVER.verify(1, getRequestedFor(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/")));
 	}
 
 }
