@@ -27,7 +27,7 @@
 		<!-- tests tagged "live" call the real Steam API; they run only with -Plive -->
 		<surefire.groups></surefire.groups>
 		<surefire.excludedGroups>live</surefire.excludedGroups>
-		<spring-ai.version>2.0.1</spring-ai.version>
+		<spring-ai.version>2.0.2</spring-ai.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
