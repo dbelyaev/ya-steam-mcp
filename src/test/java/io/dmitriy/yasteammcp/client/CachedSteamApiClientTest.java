@@ -1,5 +1,6 @@
 package io.dmitriy.yasteammcp.client;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.times;
@@ -97,8 +98,8 @@ class CachedSteamApiClientTest {
 
 		// Then
 		verify(delegate, times(2)).getOwnedGames();
-		assertThat(first.response()).isNotNull();
-		assertThat(second.response()).isNotNull();
+		assertThat(requireNonNull(first.response()).games()).isNull();
+		assertThat(requireNonNull(second.response()).games()).hasSize(3);
 	}
 
 	@Test
