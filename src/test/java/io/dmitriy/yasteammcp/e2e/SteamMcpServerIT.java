@@ -247,10 +247,16 @@ class SteamMcpServerIT {
 		// Given: own representative calls (success, upstream failure, validation error), so this test also passes
 		// when run alone; when the whole class runs it additionally covers everything the earlier tests collected
 		call("get_library", Map.of("limit", 1));
-		call("get_playtime", Map.of("appid", 777));
+		// appid 500 is the one stub that answers 500 with BODY_SECRET and the API key in its body
+		var upstreamFailure = call("get_achievements", Map.of("appid", 500));
 		call("get_playtime", Map.of("appid", 0));
 
-		// Then
+		// Then: the upstream failure really happened, so the leak assertions below are not vacuous
+		assertThat(upstreamFailure.isError()).isTrue();
+		assertThat(body(upstreamFailure).at("/error/code").asString()).isEqualTo("UPSTREAM_UNAVAILABLE");
+		assertThat(steam.server().findAll(getRequestedFor(urlPathEqualTo("/ISteamUserStats/GetPlayerAchievements/v1/"))
+			.withQueryParam("appid", equalTo("500")))).isNotEmpty();
+
 		String everything = String.join("\n", ALL_RESULT_TEXT) + "\n" + String.join("\n", STDERR);
 		assertThat(ALL_RESULT_TEXT).isNotEmpty();
 		assertThat(everything).doesNotContain(FakeSteam.API_KEY).doesNotContain(FakeSteam.BODY_SECRET).doesNotContain("key=");
