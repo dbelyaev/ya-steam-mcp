@@ -44,9 +44,7 @@ class StdioHygieneIT {
 	void stdout_withHealthyAndFailingCalls_shouldCarryOnlyJsonRpcAndNoSecretsAnywhere() throws Exception {
 		// Given
 		try (FakeSteam steam = new FakeSteam().start();
-				ServerProcess server = ServerProcess.start(Map.of("STEAM_API_KEY", FakeSteam.API_KEY, "STEAM_ID",
-						FakeSteam.STEAM_ID, "STEAM_API_BASE_URL", steam.baseUrl(),
-						"STEAM_API_ALLOW_INSECURE_TEST_BASE_URL", "true", "STEAM_API_RETRY_DELAY", "1ms"))) {
+				ServerProcess server = ServerProcess.start(steam.serverEnv())) {
 
 			// When
 			server.send(INITIALIZE);
@@ -121,9 +119,7 @@ class StdioHygieneIT {
 	void pipelinedBurst_shouldAnswerEveryRequestExactlyOnce() throws Exception {
 		// Given: many tools/call frames written back to back, including a failing, retried upstream call
 		try (FakeSteam steam = new FakeSteam().start();
-				ServerProcess server = ServerProcess.start(Map.of("STEAM_API_KEY", FakeSteam.API_KEY, "STEAM_ID",
-						FakeSteam.STEAM_ID, "STEAM_API_BASE_URL", steam.baseUrl(),
-						"STEAM_API_ALLOW_INSECURE_TEST_BASE_URL", "true", "STEAM_API_RETRY_DELAY", "1ms"))) {
+				ServerProcess server = ServerProcess.start(steam.serverEnv())) {
 			int calls = 40;
 			server.send(INITIALIZE);
 			server.send(INITIALIZED);

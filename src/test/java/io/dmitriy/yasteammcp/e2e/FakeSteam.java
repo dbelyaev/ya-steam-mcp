@@ -8,10 +8,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
+import io.dmitriy.yasteammcp.TestProperties;
+
 /** WireMock standing in for api.steampowered.com. Appid 620 is owned and healthy, 10 has no stats, 500 fails upstream. */
 final class FakeSteam implements AutoCloseable {
 
-	static final String STEAM_ID = "76561197960287930";
+	static final String STEAM_ID = TestProperties.STEAM_ID;
 
 	static final String API_KEY = "E2E-KEY-7c1d9a40beef";
 
@@ -27,6 +29,12 @@ final class FakeSteam implements AutoCloseable {
 
 	WireMockServer server() {
 		return server;
+	}
+
+	/** Environment that points the server jar at this fake, with fast retries. */
+	java.util.Map<String, String> serverEnv() {
+		return java.util.Map.of("STEAM_API_KEY", API_KEY, "STEAM_ID", STEAM_ID, "STEAM_API_BASE_URL", baseUrl(),
+				"STEAM_API_ALLOW_INSECURE_TEST_BASE_URL", "true", "STEAM_API_RETRY_DELAY", "1ms");
 	}
 
 	String baseUrl() {

@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.dmitriy.yasteammcp.TestProperties;
+import io.dmitriy.yasteammcp.McpResults;
 import io.dmitriy.yasteammcp.model.Achievement;
 import io.dmitriy.yasteammcp.model.AchievementList;
 import io.dmitriy.yasteammcp.model.ErrorCode;
@@ -35,14 +37,13 @@ import io.dmitriy.yasteammcp.service.LibraryService;
 import io.dmitriy.yasteammcp.service.NewsService;
 import io.dmitriy.yasteammcp.service.RecentGamesService;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class SteamToolsTest {
 
-	private static final String STEAM_ID = "76561197960287930";
+	private static final String STEAM_ID = TestProperties.STEAM_ID;
 
 	private final JsonMapper mapper = JsonMapper.builder().build();
 
@@ -70,7 +71,7 @@ class SteamToolsTest {
 	}
 
 	private JsonNode json(CallToolResult result) {
-		return mapper.readTree(((TextContent) result.content().getFirst()).text());
+		return mapper.readTree(McpResults.firstText(result));
 	}
 
 	@Test
@@ -195,7 +196,7 @@ class SteamToolsTest {
 		// Then
 		assertThat(result.isError()).isTrue();
 		verify(recentGamesService).getRecentGames(null);
-		assertThat(((TextContent) result.content().getFirst()).text()).doesNotContain("SECRET999")
+		assertThat(McpResults.firstText(result)).doesNotContain("SECRET999")
 			.contains("INTERNAL_ERROR");
 	}
 

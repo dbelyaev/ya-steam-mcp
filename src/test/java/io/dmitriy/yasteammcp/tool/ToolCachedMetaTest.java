@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import com.github.benmanes.caffeine.cache.Ticker;
 
+import io.dmitriy.yasteammcp.McpResults;
 import io.dmitriy.yasteammcp.TestProperties;
 import io.dmitriy.yasteammcp.client.CachedSteamApiClient;
 import io.dmitriy.yasteammcp.client.SteamApiClient;
@@ -24,7 +25,6 @@ import io.dmitriy.yasteammcp.service.LibraryService;
 import io.dmitriy.yasteammcp.service.NewsService;
 import io.dmitriy.yasteammcp.service.RecentGamesService;
 import io.dmitriy.yasteammcp.steamdto.OwnedGamesResponse;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -47,8 +47,8 @@ class ToolCachedMetaTest {
 				Clock.fixed(Instant.parse("2026-10-19T18:00:00Z"), ZoneOffset.UTC));
 
 		// When
-		JsonNode first = mapper.readTree(((TextContent) tools.getPlaytime(620L).content().getFirst()).text());
-		JsonNode second = mapper.readTree(((TextContent) tools.getPlaytime(620L).content().getFirst()).text());
+		JsonNode first = mapper.readTree(McpResults.firstText(tools.getPlaytime(620L)));
+		JsonNode second = mapper.readTree(McpResults.firstText(tools.getPlaytime(620L)));
 
 		// Then
 		assertThat(first.at("/meta/cached").asBoolean()).isFalse();

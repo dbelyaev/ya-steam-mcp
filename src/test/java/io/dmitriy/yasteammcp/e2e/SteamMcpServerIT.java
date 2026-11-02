@@ -19,13 +19,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.modelcontextprotocol.client.McpClient;
+import io.dmitriy.yasteammcp.McpResults;
+import io.dmitriy.yasteammcp.TestTools;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -52,8 +53,7 @@ class SteamMcpServerIT {
 		steam = new FakeSteam().start();
 		ServerParameters params = ServerParameters.builder(ServerProcess.command().getFirst())
 			.args(ServerProcess.command().subList(1, ServerProcess.command().size()))
-			.env(Map.of("STEAM_API_KEY", FakeSteam.API_KEY, "STEAM_ID", FakeSteam.STEAM_ID, "STEAM_API_BASE_URL",
-					steam.baseUrl(), "STEAM_API_ALLOW_INSECURE_TEST_BASE_URL", "true", "STEAM_API_RETRY_DELAY", "1ms"))
+			.env(steam.serverEnv())
 			.build();
 		var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(MAPPER));
 		transport.setStdErrorHandler(STDERR::add);
@@ -74,7 +74,7 @@ class SteamMcpServerIT {
 	}
 
 	private static String text(CallToolResult result) {
-		return ((TextContent) result.content().getFirst()).text();
+		return McpResults.firstText(result);
 	}
 
 	private static JsonNode body(CallToolResult result) {
@@ -102,8 +102,7 @@ class SteamMcpServerIT {
 
 		// Then
 		assertThat(tools).extracting(Tool::name)
-			.containsExactlyInAnyOrder("get_library", "get_game_details", "get_playtime", "get_achievements",
-					"get_recent_games", "get_game_news");
+			.containsExactlyInAnyOrderElementsOf(TestTools.NAMES);
 		tools.forEach(tool -> {
 			assertThat(tool.inputSchema()).as(tool.name()).containsEntry("type", "object");
 			assertThat(tool.annotations().readOnlyHint()).as(tool.name()).isTrue();

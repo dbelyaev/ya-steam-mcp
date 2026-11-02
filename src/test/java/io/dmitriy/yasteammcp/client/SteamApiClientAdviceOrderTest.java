@@ -19,8 +19,8 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
+import io.dmitriy.yasteammcp.TestProperties;
 import io.dmitriy.yasteammcp.config.SteamHttpConfig;
-import io.dmitriy.yasteammcp.config.SteamProperties;
 import tools.jackson.databind.json.JsonMapper;
 
 class SteamApiClientAdviceOrderTest {
@@ -31,10 +31,9 @@ class SteamApiClientAdviceOrderTest {
 		var server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
 		server.start();
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(500)));
-		var api = new SteamProperties.Api(URI.create("http://localhost:" + server.port()), "k", "76561197960287930",
-				Duration.ofSeconds(1), Duration.ofSeconds(2), 1, Duration.ofMillis(1000), Duration.ofSeconds(30), 1,
-				"english", true);
-		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
+		var api = TestProperties.api(URI.create("http://localhost:" + server.port()), "k", Duration.ofSeconds(2), 1,
+				Duration.ofMillis(1000), Duration.ofSeconds(30), 1);
+		var props = TestProperties.of(api);
 		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();
 		SteamWebApi webApi = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rc)).build()
 			.createClient(SteamWebApi.class);

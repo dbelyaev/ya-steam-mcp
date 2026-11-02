@@ -15,7 +15,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -25,12 +24,11 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
-import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
+import io.dmitriy.yasteammcp.LogCapture;
+import io.dmitriy.yasteammcp.McpResults;
 import io.dmitriy.yasteammcp.McpSpringBootTest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
 
 /**
  * Every tool, under every upstream failure mode, with a recognizable key and upstream body:
@@ -47,7 +45,7 @@ class SecretsLeakTest {
 
 	private static final WireMockServer SERVER = new WireMockServer(WireMockConfiguration.options().dynamicPort());
 
-	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
+	private LogCapture logs;
 
 	@Autowired
 	SteamTools tools;
@@ -66,13 +64,12 @@ class SecretsLeakTest {
 	@BeforeEach
 	void attach() {
 		SERVER.resetAll();
-		logs.start();
-		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).addAppender(logs);
+		logs = LogCapture.ofRoot();
 	}
 
 	@AfterEach
 	void detach() {
-		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).detachAppender(logs);
+		logs.close();
 	}
 
 	static Stream<Arguments> failures() {
@@ -103,7 +100,7 @@ class SecretsLeakTest {
 
 		// Then
 		for (CallToolResult result : results) {
-			String text = ((TextContent) result.content().getFirst()).text();
+			String text = McpResults.firstText(result);
 			assertThat(text).as("result under '%s'", name)
 				.doesNotContain(KEY)
 				.doesNotContain(BODY_SECRET)
@@ -113,8 +110,8 @@ class SecretsLeakTest {
 				.doesNotContain("localhost");
 		}
 		// the log checks below must not be vacuous: the failures above are logged (tool outcome at least)
-		assertThat(logs.list).as("log events under '%s'", name).isNotEmpty();
-		for (ILoggingEvent event : new ArrayList<>(logs.list)) {
+		assertThat(logs.events()).as("log events under '%s'", name).isNotEmpty();
+		for (ILoggingEvent event : new ArrayList<>(logs.events())) {
 			assertThat(event.getFormattedMessage()).as("log under '%s'", name)
 				.doesNotContain(KEY)
 				.doesNotContain(BODY_SECRET)

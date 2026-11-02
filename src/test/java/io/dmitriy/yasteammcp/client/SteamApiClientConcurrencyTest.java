@@ -23,6 +23,7 @@ import org.springframework.web.client.RestClient;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
+import io.dmitriy.yasteammcp.TestProperties;
 import io.dmitriy.yasteammcp.config.SteamHttpConfig;
 import io.dmitriy.yasteammcp.config.SteamProperties;
 import tools.jackson.databind.json.JsonMapper;
@@ -36,9 +37,8 @@ class SteamApiClientConcurrencyTest {
 
 		@Bean
 		SteamProperties steamProperties(@Value("${test.base-url}") URI baseUrl) {
-			var api = new SteamProperties.Api(baseUrl, "k", "76561197960287930", Duration.ofSeconds(1),
-					Duration.ofSeconds(5), 0, Duration.ofMillis(200), Duration.ofSeconds(30), 2, "english", true);
-			return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
+			return TestProperties.of(TestProperties.api(baseUrl, "k", Duration.ofSeconds(5), 0, Duration.ofMillis(200),
+					Duration.ofSeconds(30), 2));
 		}
 
 		@Bean
