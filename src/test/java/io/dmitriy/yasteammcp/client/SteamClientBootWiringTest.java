@@ -68,7 +68,7 @@ class SteamClientBootWiringTest {
 	}
 
 	@Test
-	void getOwnedGames_whenRedirected_shouldNotFollow() {
+	void getRecentlyPlayedGames_whenRedirected_shouldNotFollow() {
 		// Given
 		SERVER.stubFor(get(urlPathEqualTo("/IPlayerService/GetRecentlyPlayedGames/v1/"))
 			.willReturn(aResponse().withStatus(302).withHeader("Location", "/elsewhere")));
@@ -77,7 +77,7 @@ class SteamClientBootWiringTest {
 		// When / Then
 		assertThatThrownBy(() -> client.getRecentlyPlayedGames(5)).isInstanceOfSatisfying(SteamException.class,
 				ex -> assertThat(ex.code()).isEqualTo(ErrorCode.UPSTREAM_BAD_RESPONSE));
-		assertThat(SERVER.findAll(com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor(urlPathEqualTo("/elsewhere"))))
+		assertThat(SERVER.findAll(getRequestedFor(urlPathEqualTo("/elsewhere"))))
 			.isEmpty();
 	}
 

@@ -69,16 +69,17 @@ class SteamApiClientConcurrencyTest {
 			SteamApiClient client = ctx.getBean(SteamApiClient.class);
 
 			// When: 3 owned-games + 3 recent-games calls fired at once (6 x 300ms)
-			var pool = Executors.newFixedThreadPool(6);
-			long start = System.nanoTime();
-			List<CompletableFuture<?>> calls = new ArrayList<>();
-			for (int i = 0; i < 3; i++) {
-				calls.add(CompletableFuture.runAsync(client::getOwnedGames, pool));
-				calls.add(CompletableFuture.runAsync(() -> client.getRecentlyPlayedGames(5), pool));
+			long elapsedMs;
+			try (var pool = Executors.newFixedThreadPool(6)) {
+				long start = System.nanoTime();
+				List<CompletableFuture<?>> calls = new ArrayList<>();
+				for (int i = 0; i < 3; i++) {
+					calls.add(CompletableFuture.runAsync(client::getOwnedGames, pool));
+					calls.add(CompletableFuture.runAsync(() -> client.getRecentlyPlayedGames(5), pool));
+				}
+				CompletableFuture.allOf(calls.toArray(CompletableFuture[]::new)).get();
+				elapsedMs = (System.nanoTime() - start) / 1_000_000;
 			}
-			CompletableFuture.allOf(calls.toArray(CompletableFuture[]::new)).get();
-			long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-			pool.shutdown();
 
 			// Then: two at a time => at least 3 sequential waves of ~300ms
 			assertThat(elapsedMs).isGreaterThanOrEqualTo(850);

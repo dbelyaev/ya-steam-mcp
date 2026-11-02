@@ -11,7 +11,6 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -57,11 +56,6 @@ class SecretsLeakTest {
 	static void baseUrl(DynamicPropertyRegistry registry) {
 		SERVER.start();
 		registry.add("steam.api.base-url", () -> "http://localhost:" + SERVER.port());
-	}
-
-	@BeforeAll
-	static void start() {
-		SERVER.start();
 	}
 
 	@AfterAll

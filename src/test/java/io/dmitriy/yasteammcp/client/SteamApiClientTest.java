@@ -60,16 +60,20 @@ class SteamApiClientTest {
 	@AfterEach
 	void stop() {
 		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).detachAppender(logs);
-		// nothing but the five official paths may ever be requested
-		server.getAllServeEvents().forEach(e -> assertThat(e.getRequest().getUrl())
-			.matches("/(IPlayerService/GetOwnedGames/v1|IPlayerService/GetRecentlyPlayedGames/v1|ISteamUserStats/GetPlayerAchievements/v1|ISteamUserStats/GetSchemaForGame/v2|ISteamNews/GetNewsForApp/v2)/\\?.*"));
-		// the key and upstream bodies never reach logs
-		logs.list.forEach(ev -> {
-			assertThat(ev.getFormattedMessage()).doesNotContain(KEY).doesNotContain(BODY_SECRET);
-			assertThat(ev.getThrowableProxy()).isNull();
-		});
-		clients.close();
-		server.stop();
+		try {
+			// nothing but the five official paths may ever be requested
+			server.getAllServeEvents().forEach(e -> assertThat(e.getRequest().getUrl())
+				.matches("/(IPlayerService/GetOwnedGames/v1|IPlayerService/GetRecentlyPlayedGames/v1|ISteamUserStats/GetPlayerAchievements/v1|ISteamUserStats/GetSchemaForGame/v2|ISteamNews/GetNewsForApp/v2)/\\?.*"));
+			// the key and upstream bodies never reach logs
+			logs.list.forEach(ev -> {
+				assertThat(ev.getFormattedMessage()).doesNotContain(KEY).doesNotContain(BODY_SECRET);
+				assertThat(ev.getThrowableProxy()).isNull();
+			});
+		}
+		finally {
+			clients.close();
+			server.stop();
+		}
 	}
 
 	private SteamApiClient client(int retries, Duration readTimeout, String key) {

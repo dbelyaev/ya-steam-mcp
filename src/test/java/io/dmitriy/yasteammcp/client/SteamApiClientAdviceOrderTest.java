@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
@@ -39,28 +40,32 @@ class SteamApiClientAdviceOrderTest {
 			.createClient(SteamWebApi.class);
 		try (var clients = new ResilientClients()) {
 			SteamApiClient client = clients.create(props, webApi, JsonMapper.builder().build());
-			var pool = Executors.newFixedThreadPool(2);
 
-			// When: two calls start together
-			long start = System.nanoTime();
-			var a = CompletableFuture.runAsync(() -> swallow(client), pool);
-			var b = CompletableFuture.runAsync(() -> swallow(client), pool);
-			CompletableFuture.allOf(a, b).get();
-			long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-			pool.shutdown();
+			// When: two different calls start together
+			try (var pool = Executors.newFixedThreadPool(2)) {
+				var a = CompletableFuture.runAsync(() -> swallow(client::getOwnedGames), pool);
+				var b = CompletableFuture.runAsync(() -> swallow(() -> client.getRecentlyPlayedGames(5)), pool);
+				CompletableFuture.allOf(a, b).get();
+			}
 
-			// Then: sleeps overlap (about 1.05 s). If the slot were held across the sleep, the calls would
-			// serialize to about 2.1 s. The 1 s delay keeps the two outcomes far apart under CPU load.
-			assertThat(elapsedMs).isLessThan(1700);
+			// Then: arrival order proves the layering without any wall-clock assertion. Slot released during the
+			// retry sleep => both first attempts arrive before either retry: [X, Y, X, Y]. Slot held across the
+			// sleep => the first call's retry would arrive before the second call's first attempt: [X, X, Y, Y].
+			var endpoints = server.getAllServeEvents().stream()
+				.sorted(Comparator.comparing(e -> e.getRequest().getLoggedDate()))
+				.map(e -> URI.create(e.getRequest().getUrl()).getPath())
+				.toList();
+			assertThat(endpoints).hasSize(4);
+			assertThat(endpoints.get(0)).isNotEqualTo(endpoints.get(1));
 		}
 		finally {
 			server.stop();
 		}
 	}
 
-	private static void swallow(SteamApiClient client) {
+	private static void swallow(Runnable call) {
 		try {
-			client.getOwnedGames();
+			call.run();
 		}
 		catch (RuntimeException _) {
 			// upstream always fails

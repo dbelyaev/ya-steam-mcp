@@ -244,6 +244,12 @@ class SteamMcpServerIT {
 	@Test
 	@Order(99)
 	void apiKeyAndUpstreamBody_shouldNeverAppearInResultsOrServerStderr() {
+		// Given: own representative calls (success, upstream failure, validation error), so this test also passes
+		// when run alone; when the whole class runs it additionally covers everything the earlier tests collected
+		call("get_library", Map.of("limit", 1));
+		call("get_playtime", Map.of("appid", 777));
+		call("get_playtime", Map.of("appid", 0));
+
 		// Then
 		String everything = String.join("\n", ALL_RESULT_TEXT) + "\n" + String.join("\n", STDERR);
 		assertThat(ALL_RESULT_TEXT).isNotEmpty();
