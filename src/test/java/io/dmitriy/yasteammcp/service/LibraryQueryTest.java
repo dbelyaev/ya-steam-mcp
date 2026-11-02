@@ -3,6 +3,7 @@ package io.dmitriy.yasteammcp.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -58,7 +59,7 @@ class LibraryQueryTest {
 		assertInvalid(() -> LibraryQuery.of(null, null, null, limit, null), "limit must be between 1 and 100");
 	}
 
-	private static void assertInvalid(org.assertj.core.api.ThrowableAssert.ThrowingCallable call, String message) {
+	private static void assertInvalid(ThrowingCallable call, String message) {
 		assertThatThrownBy(call).isInstanceOfSatisfying(SteamException.class,
 				e -> assertThat(e.code()).isEqualTo(ErrorCode.INVALID_ARGUMENT))
 			.hasMessage(message);

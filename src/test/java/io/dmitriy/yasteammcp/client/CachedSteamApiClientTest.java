@@ -116,7 +116,7 @@ class CachedSteamApiClientTest {
 	}
 
 	@Test
-	void getPlayerAchievements_shouldKeyByAppidAndLanguage() {
+	void getPlayerAchievements_withDifferentAppidOrLanguage_shouldKeyByAppidAndLanguage() {
 		// Given
 		when(delegate.getPlayerAchievements(620, "english")).thenReturn(achievements(true, 1));
 		when(delegate.getPlayerAchievements(620, "russian")).thenReturn(achievements(true, 2));
@@ -151,7 +151,7 @@ class CachedSteamApiClientTest {
 	}
 
 	@Test
-	void endpoints_shouldKeepTheirOwnTtl() {
+	void endpoints_whenTimePasses_shouldKeepTheirOwnTtl() {
 		// Given: achievements 10 min, schema 24 h
 		when(delegate.getPlayerAchievements(620, "english")).thenReturn(achievements(true, 1));
 		when(delegate.getSchemaForGame(620, "english")).thenReturn(new GameSchemaResponse(new GameSchemaResponse.Game("g", null)));
@@ -182,7 +182,7 @@ class CachedSteamApiClientTest {
 	}
 
 	@Test
-	void getNewsForApp_shouldKeyByCountAndMaxLength() {
+	void getNewsForApp_withDifferentCountOrMaxLength_shouldKeyByCountAndMaxLength() {
 		// Given
 		var news = new NewsResponse(new NewsResponse.AppNews(620L, List.of()));
 		when(delegate.getNewsForApp(620, 5, 100)).thenReturn(news);
@@ -200,7 +200,7 @@ class CachedSteamApiClientTest {
 	}
 
 	@Test
-	void getRecentlyPlayedGames_shouldCacheByCountForTwoMinutes() {
+	void getRecentlyPlayedGames_whenCalledRepeatedly_shouldCacheByCountForTwoMinutes() {
 		// Given
 		when(delegate.getRecentlyPlayedGames(5)).thenReturn(new RecentlyPlayedResponse(new RecentlyPlayedResponse.Body(0, null)));
 		client.getRecentlyPlayedGames(5);

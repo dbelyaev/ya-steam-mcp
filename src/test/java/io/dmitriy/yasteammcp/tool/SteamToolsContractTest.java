@@ -38,7 +38,7 @@ class SteamToolsContractTest {
 	}
 
 	@Test
-	void listTools_shouldExposeExactlyTheSixMvpToolsWithReadOnlyHints() {
+	void listTools_whenServerStarts_shouldExposeExactlyTheSixMvpToolsWithReadOnlyHints() {
 		// When
 		var tools = server.listTools();
 

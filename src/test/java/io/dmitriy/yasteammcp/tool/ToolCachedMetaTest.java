@@ -1,7 +1,6 @@
 package io.dmitriy.yasteammcp.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +11,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.github.benmanes.caffeine.cache.Ticker;
 
@@ -29,21 +31,35 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Real cache + service + tool wiring over a mocked HTTP client: meta.cached must follow the cache. */
+@ExtendWith(MockitoExtension.class)
 class ToolCachedMetaTest {
+
+	@Mock
+	SteamApiClient http;
+
+	@Mock
+	RecentGamesService recentGames;
+
+	@Mock
+	AchievementService achievements;
+
+	@Mock
+	NewsService news;
+
+	@Mock
+	GameDetailsService gameDetails;
 
 	private final JsonMapper mapper = JsonMapper.builder().build();
 
 	@Test
 	void getPlaytime_calledTwice_shouldReportCachedFalseThenTrue() {
 		// Given
-		SteamApiClient http = mock(SteamApiClient.class);
 		when(http.getOwnedGames()).thenReturn(new OwnedGamesResponse(new OwnedGamesResponse.Body(1,
 				List.of(new OwnedGamesResponse.Game(620, "Portal 2", 740, null, null, null, null, null)))));
 		var props = TestProperties.withCredentials();
 		var cached = new CachedSteamApiClient(http, props, Ticker.systemTicker());
 		var library = new LibraryService(cached, props);
-		var tools = new SteamTools(library, mock(RecentGamesService.class), mock(AchievementService.class),
-				mock(NewsService.class), mock(GameDetailsService.class), new ToolResults(mapper),
+		var tools = new SteamTools(library, recentGames, achievements, news, gameDetails, new ToolResults(mapper),
 				Clock.fixed(Instant.parse("2026-10-19T18:00:00Z"), ZoneOffset.UTC));
 
 		// When

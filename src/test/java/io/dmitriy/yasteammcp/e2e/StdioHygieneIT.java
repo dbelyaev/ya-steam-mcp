@@ -116,7 +116,7 @@ class StdioHygieneIT {
 	}
 
 	@Test
-	void pipelinedBurst_shouldAnswerEveryRequestExactlyOnce() throws Exception {
+	void pipelinedBurst_whenManyRequestsArriveAtOnce_shouldAnswerEveryRequestExactlyOnce() throws Exception {
 		// Given: many tools/call frames written back to back, including a failing, retried upstream call
 		try (FakeSteam steam = new FakeSteam().start();
 				ServerProcess server = ServerProcess.start(steam.serverEnv())) {
