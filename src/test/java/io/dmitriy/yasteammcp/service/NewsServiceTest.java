@@ -19,6 +19,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.jspecify.annotations.Nullable;
+
 import io.dmitriy.yasteammcp.client.SteamApiClient;
 import io.dmitriy.yasteammcp.model.ErrorCode;
 import io.dmitriy.yasteammcp.model.SteamException;
@@ -41,7 +43,7 @@ class NewsServiceTest {
 		return new NewsResponse(new NewsResponse.AppNews(620L, List.of(items)));
 	}
 
-	private static NewsResponse.Item item(String title, String url, String contents) {
+	private static NewsResponse.Item item(@Nullable String title, @Nullable String url, @Nullable String contents) {
 		return new NewsResponse.Item("gid-1", title, url, "<b>Author</b>", contents, 1759314600L);
 	}
 

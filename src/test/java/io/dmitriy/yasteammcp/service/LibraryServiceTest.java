@@ -16,6 +16,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.jspecify.annotations.Nullable;
+
 import io.dmitriy.yasteammcp.TestProperties;
 import io.dmitriy.yasteammcp.client.SteamApiClient;
 import io.dmitriy.yasteammcp.model.ErrorCode;
@@ -37,7 +39,7 @@ class LibraryServiceTest {
 		service = new LibraryService(client, TestProperties.withCredentials());
 	}
 
-	private static OwnedGamesResponse.Game game(long appid, String name, Integer playtime) {
+	private static OwnedGamesResponse.Game game(long appid, @Nullable String name, @Nullable Integer playtime) {
 		return new OwnedGamesResponse.Game(appid, name, playtime, null, null, null, "hash", null);
 	}
 

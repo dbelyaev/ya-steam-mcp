@@ -7,13 +7,15 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import org.jspecify.annotations.Nullable;
+
 import io.dmitriy.yasteammcp.model.ErrorCode;
 import io.dmitriy.yasteammcp.model.GameSummary;
 import io.dmitriy.yasteammcp.model.SteamException;
 
 class SortByTest {
 
-	private static GameSummary game(long appid, String name, Integer playtime) {
+	private static GameSummary game(long appid, @Nullable String name, @Nullable Integer playtime) {
 		return new GameSummary(appid, name, playtime, null, null, null, null, "https://store.steampowered.com/app/" + appid + "/");
 	}
 

@@ -1,18 +1,21 @@
 package io.dmitriy.yasteammcp.service;
 
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 
+import org.jspecify.annotations.Nullable;
+
 import io.dmitriy.yasteammcp.steamdto.GameSchemaResponse;
 import io.dmitriy.yasteammcp.steamdto.PlayerAchievementsResponse;
 
 class AchievementMapperTest {
 
-	private static PlayerAchievementsResponse.Achievement player(String apiname, Integer achieved, Long unlock,
-			String name, String description) {
+	private static PlayerAchievementsResponse.Achievement player(@Nullable String apiname, @Nullable Integer achieved,
+			@Nullable Long unlock, @Nullable String name, @Nullable String description) {
 		return new PlayerAchievementsResponse.Achievement(apiname, achieved, unlock, name, description);
 	}
 
@@ -44,9 +47,10 @@ class AchievementMapperTest {
 
 	@Test
 	void toAchievement_whenUnlockTimeZeroOrAchievedNull_shouldHaveNoUnlockTime() {
-		assertThat(AchievementMapper.toAchievement(player("A", 1, 0L, null, null), null).unlockTime()).isNull();
+		assertThat(requireNonNull(AchievementMapper.toAchievement(player("A", 1, 0L, null, null), null)).unlockTime())
+			.isNull();
 		var unknown = AchievementMapper.toAchievement(player("A", null, 5L, null, null), null);
-		assertThat(unknown.achieved()).isFalse();
+		assertThat(requireNonNull(unknown).achieved()).isFalse();
 		assertThat(unknown.unlockTime()).isNull();
 	}
 
@@ -54,7 +58,7 @@ class AchievementMapperTest {
 	void toAchievement_whenSchemaPresent_shouldPreferSchemaTextAndMapHidden() {
 		var schema = new GameSchemaResponse.Achievement("A", "Schema name", "Schema desc", 1);
 
-		var result = AchievementMapper.toAchievement(player("A", 0, null, "Player name", "Player desc"), schema);
+		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, "Player name", "Player desc"), schema));
 
 		assertThat(result.displayName()).isEqualTo("Schema name");
 		assertThat(result.description()).isEqualTo("Schema desc");
@@ -65,7 +69,7 @@ class AchievementMapperTest {
 	void toAchievement_whenSchemaTextBlank_shouldFallBackToPlayerText() {
 		var schema = new GameSchemaResponse.Achievement("A", " ", "", 0);
 
-		var result = AchievementMapper.toAchievement(player("A", 0, null, "Player name", "Player desc"), schema);
+		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, "Player name", "Player desc"), schema));
 
 		assertThat(result.displayName()).isEqualTo("Player name");
 		assertThat(result.description()).isEqualTo("Player desc");
@@ -74,7 +78,7 @@ class AchievementMapperTest {
 
 	@Test
 	void toAchievement_whenNoSchemaAndNoText_shouldLeaveTextAndHiddenNull() {
-		var result = AchievementMapper.toAchievement(player("A", 0, null, " ", null), null);
+		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, " ", null), null));
 
 		assertThat(result.displayName()).isNull();
 		assertThat(result.description()).isNull();
