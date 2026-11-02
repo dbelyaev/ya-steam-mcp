@@ -16,11 +16,12 @@ import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
@@ -40,7 +41,8 @@ class SteamApiClientTest {
 
 	private static final String BODY_SECRET = "SECRETBODYTEXT";
 
-	private WireMockServer server;
+	@RegisterExtension
+	WireMockExtension server = WireMockExtension.newInstance().options(WireMockConfiguration.options().dynamicPort()).build();
 
 	private final ResilientClients clients = new ResilientClients();
 
@@ -48,8 +50,6 @@ class SteamApiClientTest {
 
 	@BeforeEach
 	void start() {
-		server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
-		server.start();
 		logs = LogCapture.ofRoot();
 	}
 
@@ -68,7 +68,6 @@ class SteamApiClientTest {
 		}
 		finally {
 			clients.close();
-			server.stop();
 		}
 	}
 
@@ -77,7 +76,7 @@ class SteamApiClientTest {
 	}
 
 	private SteamApiClient client(int retries, Duration readTimeout, Duration totalTimeout, String key) {
-		var api = TestProperties.api(URI.create("http://localhost:" + server.port()), key, readTimeout, retries,
+		var api = TestProperties.api(URI.create("http://localhost:" + server.getPort()), key, readTimeout, retries,
 				Duration.ofMillis(1), totalTimeout, 4);
 		var props = TestProperties.of(api);
 		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();

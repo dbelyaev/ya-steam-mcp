@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
@@ -43,7 +43,8 @@ class SecretsLeakTest {
 
 	private static final String BODY_SECRET = "UPSTREAM-BODY-SECRET-5521";
 
-	private static final WireMockServer SERVER = new WireMockServer(WireMockConfiguration.options().dynamicPort());
+	@RegisterExtension
+	static final WireMockExtension SERVER = WireMockExtension.newInstance().options(WireMockConfiguration.options().dynamicPort()).build();
 
 	private LogCapture logs;
 
@@ -52,18 +53,11 @@ class SecretsLeakTest {
 
 	@DynamicPropertySource
 	static void baseUrl(DynamicPropertyRegistry registry) {
-		SERVER.start();
-		registry.add("steam.api.base-url", () -> "http://localhost:" + SERVER.port());
-	}
-
-	@AfterAll
-	static void stop() {
-		SERVER.stop();
+		registry.add("steam.api.base-url", () -> "http://localhost:" + SERVER.getPort());
 	}
 
 	@BeforeEach
 	void attach() {
-		SERVER.resetAll();
 		logs = LogCapture.ofRoot();
 	}
 

@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -20,7 +21,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.web.client.RestClient;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 import io.dmitriy.yasteammcp.TestProperties;
@@ -53,17 +54,18 @@ class SteamApiClientConcurrencyTest {
 
 	}
 
+	@RegisterExtension
+	WireMockExtension server = WireMockExtension.newInstance().options(WireMockConfiguration.options().dynamicPort()).build();
+
 	@Test
 	void calls_withLimitOfTwo_shouldBeSharedAcrossAllClientMethods() throws Exception {
 		// Given: each upstream call takes 300ms, limit property is 2
-		var server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
-		server.start();
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(200)
 			.withHeader("Content-Type", "application/json").withBody(BODY).withFixedDelay(300)));
 		try (var ctx = new AnnotationConfigApplicationContext()) {
 			ctx.getEnvironment().getPropertySources()
 				.addFirst(new MapPropertySource("t", java.util.Map.of("steam.api.max-concurrent-requests", "2",
-					"test.base-url", "http://localhost:" + server.port())));
+					"test.base-url", "http://localhost:" + server.getPort())));
 			ctx.register(Cfg.class);
 			ctx.refresh();
 			SteamApiClient client = ctx.getBean(SteamApiClient.class);
@@ -83,9 +85,6 @@ class SteamApiClientConcurrencyTest {
 
 			// Then: two at a time => at least 3 sequential waves of ~300ms
 			assertThat(elapsedMs).isGreaterThanOrEqualTo(850);
-		}
-		finally {
-			server.stop();
 		}
 	}
 

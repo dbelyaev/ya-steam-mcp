@@ -12,11 +12,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 import io.dmitriy.yasteammcp.TestProperties;
@@ -25,13 +26,14 @@ import tools.jackson.databind.json.JsonMapper;
 
 class SteamApiClientAdviceOrderTest {
 
+	@RegisterExtension
+	WireMockExtension server = WireMockExtension.newInstance().options(WireMockConfiguration.options().dynamicPort()).build();
+
 	@Test
 	void retrySleep_withConcurrencyLimitOfOne_shouldNotHoldTheSlot() throws Exception {
 		// Given: limit 1, one retry after 1000ms, upstream always answers 500 immediately
-		var server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
-		server.start();
 		server.stubFor(get(anyUrl()).willReturn(aResponse().withStatus(500)));
-		var api = TestProperties.api(URI.create("http://localhost:" + server.port()), "k", Duration.ofSeconds(2), 1,
+		var api = TestProperties.api(URI.create("http://localhost:" + server.getPort()), "k", Duration.ofSeconds(2), 1,
 				Duration.ofMillis(1000), Duration.ofSeconds(30), 1);
 		var props = TestProperties.of(api);
 		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();
@@ -56,9 +58,6 @@ class SteamApiClientAdviceOrderTest {
 				.toList();
 			assertThat(endpoints).hasSize(4);
 			assertThat(endpoints.get(0)).isNotEqualTo(endpoints.get(1));
-		}
-		finally {
-			server.stop();
 		}
 	}
 
