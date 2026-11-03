@@ -19,8 +19,12 @@ Result at release candidate: **264 unit/Spring tests (surefire) + 14 end-to-end 
 | Everything (CI) | `./mvnw -B clean verify` |
 | Unit and Spring tests only | `./mvnw test` |
 | One class | `./mvnw -Dtest=LibraryServiceTest test` |
-| One integration test (needs the jar) | `./mvnw verify -Dtest=NoSuch -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=StdioHygieneIT` |
+| One integration test (needs the jar) | `./mvnw verify -Djacoco.skip=true -Dtest=NoSuch -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=StdioHygieneIT` |
 | Live smoke test | `STEAM_API_KEY=... STEAM_ID=... ./mvnw -Plive test` |
+
+Coverage: `verify` writes `target/site/jacoco/jacoco.xml` from the unit tests and fails below 90% lines or 80% branches
+(jacoco-maven-plugin `check`). A partial `verify` has no unit-test coverage and would fail that gate, so pass
+`-Djacoco.skip=true` as in the integration-test row. The server jar's child JVM in the integration tests is not instrumented.
 
 ## Conventions
 
