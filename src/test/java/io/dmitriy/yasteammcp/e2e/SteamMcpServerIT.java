@@ -1,5 +1,6 @@
 package io.dmitriy.yasteammcp.e2e;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static java.util.Objects.requireNonNull;
@@ -19,13 +20,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import io.modelcontextprotocol.client.McpClient;
+import io.dmitriy.yasteammcp.McpResults;
+import io.dmitriy.yasteammcp.TestTools;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -52,8 +54,7 @@ class SteamMcpServerIT {
 		steam = new FakeSteam().start();
 		ServerParameters params = ServerParameters.builder(ServerProcess.command().getFirst())
 			.args(ServerProcess.command().subList(1, ServerProcess.command().size()))
-			.env(Map.of("STEAM_API_KEY", FakeSteam.API_KEY, "STEAM_ID", FakeSteam.STEAM_ID, "STEAM_API_BASE_URL",
-					steam.baseUrl(), "STEAM_API_ALLOW_INSECURE_TEST_BASE_URL", "true", "STEAM_API_RETRY_DELAY", "1ms"))
+			.env(steam.serverEnv())
 			.build();
 		var transport = new StdioClientTransport(params, new JacksonMcpJsonMapper(MAPPER));
 		transport.setStdErrorHandler(STDERR::add);
@@ -74,7 +75,7 @@ class SteamMcpServerIT {
 	}
 
 	private static String text(CallToolResult result) {
-		return ((TextContent) result.content().getFirst()).text();
+		return McpResults.firstText(result);
 	}
 
 	private static JsonNode body(CallToolResult result) {
@@ -83,7 +84,7 @@ class SteamMcpServerIT {
 
 	@Test
 	@Order(1)
-	void initialize_shouldReportServerNameAndToolsCapability() {
+	void initialize_whenConnecting_shouldReportServerNameAndToolsCapability() {
 		// When
 		var init = client.initialize();
 
@@ -96,14 +97,13 @@ class SteamMcpServerIT {
 
 	@Test
 	@Order(2)
-	void listTools_shouldExposeExactlyTheSixReadOnlyMvpTools() {
+	void listTools_whenDiscovering_shouldExposeExactlyTheSixReadOnlyMvpTools() {
 		// When
 		List<Tool> tools = client.listTools().tools();
 
 		// Then
 		assertThat(tools).extracting(Tool::name)
-			.containsExactlyInAnyOrder("get_library", "get_game_details", "get_playtime", "get_achievements",
-					"get_recent_games", "get_game_news");
+			.containsExactlyInAnyOrderElementsOf(TestTools.NAMES);
 		tools.forEach(tool -> {
 			assertThat(tool.inputSchema()).as(tool.name()).containsEntry("type", "object");
 			assertThat(tool.annotations().readOnlyHint()).as(tool.name()).isTrue();
@@ -144,7 +144,7 @@ class SteamMcpServerIT {
 
 	@Test
 	@Order(4)
-	void repeatedCall_shouldBeServedFromCacheAndReportIt() {
+	void repeatedCall_withSameArguments_shouldBeServedFromCacheAndReportIt() {
 		// Given: a count not used by earlier tests
 		Map<String, Object> args = Map.of("limit", 3);
 		int before = steam.server().findAll(getRequestedFor(urlPathEqualTo("/IPlayerService/GetRecentlyPlayedGames/v1/"))).size();
@@ -162,7 +162,7 @@ class SteamMcpServerIT {
 
 	@Test
 	@Order(5)
-	void toolFailure_shouldNotAffectTheNextCall() {
+	void toolFailure_whenOneCallFails_shouldNotAffectTheNextCall() {
 		// Given: appid 777 is not in the stubbed library
 		var failed = call("get_playtime", Map.of("appid", 777));
 
@@ -178,7 +178,7 @@ class SteamMcpServerIT {
 
 	@Test
 	@Order(6)
-	void upstreamServerError_shouldBeRetriedTwiceThenReturnRetryableErrorAndServerRecovers() {
+	void upstreamServerError_whenSteamKeepsFailing_shouldBeRetriedTwiceThenReturnRetryableErrorAndServerRecovers() {
 		// When
 		var failed = call("get_achievements", Map.of("appid", 500));
 		var good = call("get_playtime", Map.of("appid", 620));
@@ -189,13 +189,13 @@ class SteamMcpServerIT {
 		assertThat(error.at("/code").asString()).isEqualTo("UPSTREAM_UNAVAILABLE");
 		assertThat(error.at("/retryable").asBoolean()).isTrue();
 		assertThat(steam.server().findAll(getRequestedFor(urlPathEqualTo("/ISteamUserStats/GetPlayerAchievements/v1/"))
-			.withQueryParam("appid", com.github.tomakehurst.wiremock.client.WireMock.equalTo("500")))).hasSize(3);
+			.withQueryParam("appid", equalTo("500")))).hasSize(3);
 		assertThat(good.isError()).isFalse();
 	}
 
 	@Test
 	@Order(7)
-	void achievementsForGameWithoutStats_shouldReturnUnavailableNotZeroOfZero() {
+	void getAchievements_forGameWithoutStats_shouldReturnUnavailableNotZeroOfZero() {
 		// When
 		var result = call("get_achievements", Map.of("appid", 10));
 
@@ -206,7 +206,7 @@ class SteamMcpServerIT {
 
 	@Test
 	@Order(8)
-	void argumentsOutOfRange_shouldReturnInvalidArgumentEnvelopeWithoutCallingSteam() {
+	void toolCall_withArgumentsOutOfRange_shouldReturnInvalidArgumentEnvelopeWithoutCallingSteam() {
 		// Given
 		int before = steam.server().getAllServeEvents().size();
 
@@ -228,7 +228,7 @@ class SteamMcpServerIT {
 
 	@Test
 	@Order(9)
-	void argumentsOfWrongShape_shouldBeRejectedByTheFrameworkAsToolErrors() {
+	void toolCall_withArgumentsOfWrongShape_shouldBeRejectedByTheFrameworkAsToolErrors() {
 		// When
 		var missing = call("get_playtime", Map.of());
 		var wrongType = call("get_playtime", Map.of("appid", "abc"));
@@ -243,8 +243,20 @@ class SteamMcpServerIT {
 
 	@Test
 	@Order(99)
-	void apiKeyAndUpstreamBody_shouldNeverAppearInResultsOrServerStderr() {
-		// Then
+	void toolCalls_ofAnyOutcome_shouldNeverExposeApiKeyOrUpstreamBodyInResultsOrServerStderr() {
+		// Given: own representative calls (success, upstream failure, validation error), so this test also passes
+		// when run alone; when the whole class runs it additionally covers everything the earlier tests collected
+		call("get_library", Map.of("limit", 1));
+		// appid 500 is the one stub that answers 500 with BODY_SECRET and the API key in its body
+		var upstreamFailure = call("get_achievements", Map.of("appid", 500));
+		call("get_playtime", Map.of("appid", 0));
+
+		// Then: the upstream failure really happened, so the leak assertions below are not vacuous
+		assertThat(upstreamFailure.isError()).isTrue();
+		assertThat(body(upstreamFailure).at("/error/code").asString()).isEqualTo("UPSTREAM_UNAVAILABLE");
+		assertThat(steam.server().findAll(getRequestedFor(urlPathEqualTo("/ISteamUserStats/GetPlayerAchievements/v1/"))
+			.withQueryParam("appid", equalTo("500")))).isNotEmpty();
+
 		String everything = String.join("\n", ALL_RESULT_TEXT) + "\n" + String.join("\n", STDERR);
 		assertThat(ALL_RESULT_TEXT).isNotEmpty();
 		assertThat(everything).doesNotContain(FakeSteam.API_KEY).doesNotContain(FakeSteam.BODY_SECRET).doesNotContain("key=");

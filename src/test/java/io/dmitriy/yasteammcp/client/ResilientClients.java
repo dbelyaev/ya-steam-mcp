@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Configuration;
@@ -29,6 +30,16 @@ final class ResilientClients implements AutoCloseable {
 	private final List<AnnotationConfigApplicationContext> contexts = new ArrayList<>();
 
 	SteamApiClient create(SteamProperties props, SteamWebApi webApi, JsonMapper mapper) {
+		return create(props, webApi, mapper, UnaryOperator.identity());
+	}
+
+	/**
+	 * Like {@link #create(SteamProperties, SteamWebApi, JsonMapper)}, but the client talks to the concurrency-limited
+	 * web api through {@code betweenRetryAndLimit}. That sits exactly between the retry advice and the limit, so a test
+	 * can pause an attempt after the retry backoff and before it takes a concurrency slot.
+	 */
+	SteamApiClient create(SteamProperties props, SteamWebApi webApi, JsonMapper mapper,
+			UnaryOperator<SteamWebApi> betweenRetryAndLimit) {
 		var api = props.api();
 		Map<String, Object> source = new LinkedHashMap<>();
 		source.put("steam.api.retries", api.retries());
@@ -41,7 +52,8 @@ final class ResilientClients implements AutoCloseable {
 		// same layering as production: retry (client) -> concurrency limit (web api) -> http
 		ctx.registerBean("limitedWebApi", SteamWebApi.class, () -> new ConcurrencyLimitedSteamWebApi(webApi));
 		ctx.registerBean("steamApiClient", SteamApiClient.class,
-				() -> new SteamApiClientImpl(props, ctx.getBean(SteamWebApi.class), mapper));
+				() -> new SteamApiClientImpl(props,
+						betweenRetryAndLimit.apply(ctx.getBean("limitedWebApi", SteamWebApi.class)), mapper));
 		ctx.refresh();
 		contexts.add(ctx);
 		return ctx.getBean(SteamApiClient.class);

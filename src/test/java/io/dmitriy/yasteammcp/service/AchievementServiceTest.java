@@ -3,6 +3,7 @@ package io.dmitriy.yasteammcp.service;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -60,13 +61,9 @@ class AchievementServiceTest {
 	}
 
 	private static SteamException thrown(Runnable call) {
-		try {
-			call.run();
-		}
-		catch (SteamException ex) {
-			return ex;
-		}
-		throw new AssertionError("expected SteamException");
+		var ex = catchThrowableOfType(SteamException.class, call::run);
+		assertThat(ex).as("expected SteamException").isNotNull();
+		return ex;
 	}
 
 	@Test

@@ -1,6 +1,7 @@
 package io.dmitriy.yasteammcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -67,28 +68,23 @@ class LiveSteamSmokeTest {
 
 		// Then
 		assertThat(items).hasSizeLessThanOrEqualTo(2);
-		boolean markupFree = items.stream()
-			.map(i -> i.contentPreview() == null ? "" : i.contentPreview())
-			.noneMatch(text -> text.contains("<") || text.contains("[/") || text.length() > 200);
-		assertThat(markupFree).isTrue();
-		boolean httpsOnly = items.stream().allMatch(i -> i.url() == null || i.url().startsWith("https://"));
-		assertThat(httpsOnly).isTrue();
+		assertThat(items).allSatisfy(item -> {
+			assertThat(item.contentPreview() == null ? "" : item.contentPreview()).doesNotContain("<", "[/")
+				.hasSizeLessThanOrEqualTo(200);
+			assertThat(item.url() == null ? "https://" : item.url()).startsWith("https://");
+		});
 	}
 
 	@Test
 	void getAchievements_forPublicApp_shouldSucceedOrReportAnAccessErrorNeverAnInternalOne() {
 		// When
-		ErrorCode outcome;
-		try {
-			achievements.getAchievements(PUBLIC_APPID, null, null, 5);
-			outcome = null;
-		}
-		catch (SteamException ex) {
-			outcome = ex.code();
-		}
+		var failure = catchThrowableOfType(SteamException.class,
+				() -> achievements.getAchievements(PUBLIC_APPID, null, null, 5));
 
-		// Then
-		assertThat(outcome).isIn(null, ErrorCode.ACHIEVEMENTS_UNAVAILABLE, ErrorCode.DATA_NOT_ACCESSIBLE);
+		// Then: no exception at all is fine
+		if (failure != null) {
+			assertThat(failure.code()).isIn(ErrorCode.ACHIEVEMENTS_UNAVAILABLE, ErrorCode.DATA_NOT_ACCESSIBLE);
+		}
 	}
 
 }

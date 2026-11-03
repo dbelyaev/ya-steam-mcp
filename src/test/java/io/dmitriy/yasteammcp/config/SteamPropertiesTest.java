@@ -133,7 +133,7 @@ class SteamPropertiesTest {
 			});
 	}
 
-	@org.junit.jupiter.params.ParameterizedTest
+	@ParameterizedTest
 	@ValueSource(strings = { "steam.cache.owned-games-ttl=0s", "steam.cache.schema-ttl=8d", "steam.cache.news-ttl=500ms" })
 	void binding_withCacheTtlOutOfRange_shouldFailStartup(String property) {
 		// Given / When / Then

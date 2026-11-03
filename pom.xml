@@ -24,10 +24,15 @@
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
+		<!-- read by sonar-maven-plugin, which ignores sonar-project.properties -->
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 		<!-- tests tagged "live" call the real Steam API; they run only with -Plive -->
 		<surefire.groups></surefire.groups>
 		<surefire.excludedGroups>live</surefire.excludedGroups>
 		<spring-ai.version>2.0.1</spring-ai.version>
+		<jacoco.version>0.8.14</jacoco.version>
+		<!-- filled by jacoco:prepare-agent; must exist (empty) so surefire's @{argLine} resolves when JaCoCo is skipped -->
+		<argLine></argLine>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -116,8 +121,55 @@
 				<configuration>
 					<groups>${surefire.groups}</groups>
 					<excludedGroups>${surefire.excludedGroups}</excludedGroups>
-					<argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
+					<argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<!-- baseline at introduction: 98.5% lines, 89.5% branches; thresholds leave room for noise -->
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.90</minimum>
+										</limit>
+										<limit>
+											<counter>BRANCH</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.80</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

@@ -24,16 +24,17 @@ class AppIdValidatorTest {
 
 	@ParameterizedTest
 	@ValueSource(longs = { 0, -1, 4294967296L, Long.MAX_VALUE, Long.MIN_VALUE })
-	void requireValid_outOfRange_shouldThrowInvalidArgument(long appid) {
+	void requireValid_whenOutOfRange_shouldThrowInvalidArgument(long appid) {
 		// When / Then
 		assertThatThrownBy(() -> AppIdValidator.requireValid(appid)).isInstanceOfSatisfying(SteamException.class,
 				ex -> assertThat(ex.code()).isEqualTo(ErrorCode.INVALID_ARGUMENT));
 	}
 
 	@Test
-	void requireValid_whenNull_shouldThrow() {
+	void requireValid_whenNull_shouldThrowInvalidArgument() {
 		// When / Then
-		assertThatThrownBy(() -> AppIdValidator.requireValid(null)).isInstanceOf(SteamException.class);
+		assertThatThrownBy(() -> AppIdValidator.requireValid(null)).isInstanceOfSatisfying(SteamException.class,
+				ex -> assertThat(ex.code()).isEqualTo(ErrorCode.INVALID_ARGUMENT));
 	}
 
 }

@@ -7,16 +7,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-
+import io.dmitriy.yasteammcp.LogCapture;
+import io.dmitriy.yasteammcp.McpResults;
 import io.dmitriy.yasteammcp.model.ErrorCode;
 import io.dmitriy.yasteammcp.model.SteamException;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import tools.jackson.databind.json.JsonMapper;
 
 class ToolResultsTest {
@@ -24,7 +20,7 @@ class ToolResultsTest {
 	private final ToolResults results = new ToolResults(JsonMapper.builder().build());
 
 	private static String text(CallToolResult r) {
-		return ((TextContent) r.content().getFirst()).text();
+		return McpResults.firstText(r);
 	}
 
 	@Test
@@ -77,22 +73,15 @@ class ToolResultsTest {
 	@Test
 	void run_whenToolCompletes_shouldLogNameOutcomeAndDurationOnly() {
 		// Given
-		var appender = new ListAppender<ILoggingEvent>();
-		appender.start();
-		var logger = (Logger) LoggerFactory.getLogger(ToolResults.class);
-		logger.addAppender(appender);
-		try {
+		try (var logs = LogCapture.of(ToolResults.class)) {
 			// When
 			results.run("get_library", () -> {
 				throw new SteamException(ErrorCode.UPSTREAM_AUTH_FAILED, "Steam rejected the API key");
 			});
 
 			// Then
-			assertThat(appender.list).singleElement().satisfies(ev -> assertThat(ev.getFormattedMessage())
+			assertThat(logs.events()).singleElement().satisfies(ev -> assertThat(ev.getFormattedMessage())
 				.matches("tool=get_library outcome=UPSTREAM_AUTH_FAILED durationMs=\\d+"));
-		}
-		finally {
-			logger.detachAppender(appender);
 		}
 	}
 

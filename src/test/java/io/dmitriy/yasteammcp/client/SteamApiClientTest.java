@@ -16,21 +16,19 @@ import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
+import io.dmitriy.yasteammcp.LogCapture;
+import io.dmitriy.yasteammcp.TestProperties;
 import io.dmitriy.yasteammcp.config.SteamHttpConfig;
-import io.dmitriy.yasteammcp.config.SteamProperties;
 import io.dmitriy.yasteammcp.model.ErrorCode;
 import io.dmitriy.yasteammcp.model.SteamException;
 import tools.jackson.databind.json.JsonMapper;
@@ -39,37 +37,38 @@ class SteamApiClientTest {
 
 	private static final String KEY = "TESTKEY0123456789";
 
-	private static final String STEAM_ID = "76561197960287930";
+	private static final String STEAM_ID = TestProperties.STEAM_ID;
 
 	private static final String BODY_SECRET = "SECRETBODYTEXT";
 
-	private WireMockServer server;
+	@RegisterExtension
+	WireMockExtension server = WireMockExtension.newInstance().options(WireMockConfiguration.options().dynamicPort()).build();
 
 	private final ResilientClients clients = new ResilientClients();
 
-	private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
+	private LogCapture logs;
 
 	@BeforeEach
 	void start() {
-		server = new WireMockServer(WireMockConfiguration.options().dynamicPort());
-		server.start();
-		logs.start();
-		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).addAppender(logs);
+		logs = LogCapture.ofRoot();
 	}
 
 	@AfterEach
 	void stop() {
-		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).detachAppender(logs);
-		// nothing but the five official paths may ever be requested
-		server.getAllServeEvents().forEach(e -> assertThat(e.getRequest().getUrl())
-			.matches("/(IPlayerService/GetOwnedGames/v1|IPlayerService/GetRecentlyPlayedGames/v1|ISteamUserStats/GetPlayerAchievements/v1|ISteamUserStats/GetSchemaForGame/v2|ISteamNews/GetNewsForApp/v2)/\\?.*"));
-		// the key and upstream bodies never reach logs
-		logs.list.forEach(ev -> {
-			assertThat(ev.getFormattedMessage()).doesNotContain(KEY).doesNotContain(BODY_SECRET);
-			assertThat(ev.getThrowableProxy()).isNull();
-		});
-		clients.close();
-		server.stop();
+		logs.close();
+		try {
+			// nothing but the five official paths may ever be requested
+			server.getAllServeEvents().forEach(e -> assertThat(e.getRequest().getUrl())
+				.matches("/(IPlayerService/GetOwnedGames/v1|IPlayerService/GetRecentlyPlayedGames/v1|ISteamUserStats/GetPlayerAchievements/v1|ISteamUserStats/GetSchemaForGame/v2|ISteamNews/GetNewsForApp/v2)/\\?.*"));
+			// the key and upstream bodies never reach logs
+			logs.events().forEach(ev -> {
+				assertThat(ev.getFormattedMessage()).doesNotContain(KEY).doesNotContain(BODY_SECRET);
+				assertThat(ev.getThrowableProxy()).isNull();
+			});
+		}
+		finally {
+			clients.close();
+		}
 	}
 
 	private SteamApiClient client(int retries, Duration readTimeout, String key) {
@@ -77,9 +76,9 @@ class SteamApiClientTest {
 	}
 
 	private SteamApiClient client(int retries, Duration readTimeout, Duration totalTimeout, String key) {
-		var api = new SteamProperties.Api(URI.create("http://localhost:" + server.port()), key, STEAM_ID,
-				Duration.ofSeconds(1), readTimeout, retries, Duration.ofMillis(1), totalTimeout, 4, "english", true);
-		var props = new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
+		var api = TestProperties.api(URI.create("http://localhost:" + server.getPort()), key, readTimeout, retries,
+				Duration.ofMillis(1), totalTimeout, 4);
+		var props = TestProperties.of(api);
 		RestClient rc = SteamHttpConfig.customize(RestClient.builder(), api).build();
 		SteamWebApi webApi = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rc)).build()
 			.createClient(SteamWebApi.class);

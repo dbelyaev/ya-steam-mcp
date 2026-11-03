@@ -7,14 +7,13 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 import io.dmitriy.yasteammcp.McpSpringBootTest;
@@ -27,26 +26,16 @@ import io.dmitriy.yasteammcp.model.SteamException;
 		"spring.http.serviceclient.steam.base-url=https://evil.example" })
 class SteamClientBootWiringTest {
 
-	private static final WireMockServer SERVER = new WireMockServer(WireMockConfiguration.options().dynamicPort());
+	@RegisterExtension
+	static final WireMockExtension SERVER = WireMockExtension.newInstance().options(WireMockConfiguration.options().dynamicPort()).build();
 
 	@Autowired
 	SteamApiClient client;
 
-	@BeforeEach
-	void resetStubs() {
-		SERVER.resetAll();
-	}
-
-	@AfterAll
-	static void stop() {
-		SERVER.stop();
-	}
-
 	@DynamicPropertySource
 	static void baseUrl(DynamicPropertyRegistry registry) {
-		// runs while the context is created, i.e. before any test method
-		SERVER.start();
-		registry.add("steam.api.base-url", () -> "http://localhost:" + SERVER.port());
+		// resolved lazily while the context is created; the extension has started the server in beforeAll
+		registry.add("steam.api.base-url", () -> "http://localhost:" + SERVER.getPort());
 	}
 
 	@Test
@@ -68,7 +57,7 @@ class SteamClientBootWiringTest {
 	}
 
 	@Test
-	void getOwnedGames_whenRedirected_shouldNotFollow() {
+	void getRecentlyPlayedGames_whenRedirected_shouldNotFollow() {
 		// Given
 		SERVER.stubFor(get(urlPathEqualTo("/IPlayerService/GetRecentlyPlayedGames/v1/"))
 			.willReturn(aResponse().withStatus(302).withHeader("Location", "/elsewhere")));
@@ -77,7 +66,7 @@ class SteamClientBootWiringTest {
 		// When / Then
 		assertThatThrownBy(() -> client.getRecentlyPlayedGames(5)).isInstanceOfSatisfying(SteamException.class,
 				ex -> assertThat(ex.code()).isEqualTo(ErrorCode.UPSTREAM_BAD_RESPONSE));
-		assertThat(SERVER.findAll(com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor(urlPathEqualTo("/elsewhere"))))
+		assertThat(SERVER.findAll(getRequestedFor(urlPathEqualTo("/elsewhere"))))
 			.isEmpty();
 	}
 

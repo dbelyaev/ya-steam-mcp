@@ -22,8 +22,7 @@ class YaSteamMcpApplicationTests {
 		var names = server.listTools().stream().map(Tool::name).toList();
 
 		// Then
-		assertThat(names).containsExactlyInAnyOrder("get_library", "get_game_details", "get_playtime",
-				"get_achievements", "get_recent_games", "get_game_news");
+		assertThat(names).containsExactlyInAnyOrderElementsOf(TestTools.NAMES);
 	}
 
 }

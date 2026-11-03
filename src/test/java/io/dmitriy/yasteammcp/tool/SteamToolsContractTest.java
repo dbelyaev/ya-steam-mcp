@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.dmitriy.yasteammcp.McpSpringBootTest;
+import io.dmitriy.yasteammcp.TestTools;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 
@@ -37,13 +38,12 @@ class SteamToolsContractTest {
 	}
 
 	@Test
-	void listTools_shouldExposeExactlyTheSixMvpToolsWithReadOnlyHints() {
+	void listTools_whenServerStarts_shouldExposeExactlyTheSixMvpToolsWithReadOnlyHints() {
 		// When
 		var tools = server.listTools();
 
 		// Then
-		assertThat(tools).extracting(Tool::name).containsExactlyInAnyOrder("get_library", "get_game_details", "get_playtime",
-				"get_achievements", "get_recent_games", "get_game_news");
+		assertThat(tools).extracting(Tool::name).containsExactlyInAnyOrderElementsOf(TestTools.NAMES);
 		tools.forEach(t -> {
 			assertThat(t.annotations().readOnlyHint()).as(t.name()).isTrue();
 			assertThat(t.annotations().destructiveHint()).as(t.name()).isFalse();
