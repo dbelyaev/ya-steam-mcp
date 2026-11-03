@@ -50,13 +50,17 @@ class SteamApiClientAdviceOrderTest {
 			SteamApiClient client = clients.create(props, webApi, JsonMapper.builder().build(),
 					limited -> gateSecondOwnedGamesCall(limited, release));
 
-			// When: both calls start
+			// When: call A starts and its first attempt reaches Steam, so A is now waiting at the gate for its retry
 			pool.execute(() -> swallow(client::getOwnedGames));
+			await().alias("owned-games first attempt arrives").atMost(Duration.ofSeconds(10))
+				.until(() -> server.getAllServeEvents().stream()
+					.anyMatch(e -> e.getRequest().getUrl().startsWith("/IPlayerService/GetOwnedGames/v1/")));
+			// and only then call B starts
 			pool.execute(() -> swallow(() -> client.getRecentlyPlayedGames(5)));
 
-			// Then: B reaches Steam although A is between its first attempt and its retry. If A kept the concurrency
-			// slot through its backoff, B could never enter and no recently-played request would arrive; the timeout
-			// is only a ceiling for that failing case, the passing case does not wait on it.
+			// Then: B reaches Steam while A's retry is still held at the gate. If A kept the concurrency slot
+			// through its backoff, B could never enter and no recently-played request would arrive; the timeout is
+			// only a ceiling for that failing case, the passing case does not wait on it.
 			await().alias("recently-played request arrives while the owned-games call waits for its retry")
 				.atMost(Duration.ofSeconds(10))
 				.until(() -> server.getAllServeEvents().stream()

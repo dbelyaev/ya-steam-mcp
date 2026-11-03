@@ -24,6 +24,8 @@
 		<java.version>25</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
+		<!-- read by sonar-maven-plugin, which ignores sonar-project.properties -->
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 		<!-- tests tagged "live" call the real Steam API; they run only with -Plive -->
 		<surefire.groups></surefire.groups>
 		<surefire.excludedGroups>live</surefire.excludedGroups>
