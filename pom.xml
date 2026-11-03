@@ -30,7 +30,7 @@
 		<surefire.groups></surefire.groups>
 		<surefire.excludedGroups>live</surefire.excludedGroups>
 		<spring-ai.version>2.0.2</spring-ai.version>
-		<jacoco.version>0.8.14</jacoco.version>
+		<jacoco.version>0.8.16</jacoco.version>
 		<!-- filled by jacoco:prepare-agent; must exist (empty) so surefire's @{argLine} resolves when JaCoCo is skipped -->
 		<argLine></argLine>
 	</properties>
