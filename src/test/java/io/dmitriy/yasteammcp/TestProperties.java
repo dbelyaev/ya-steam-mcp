@@ -26,15 +26,23 @@ public final class TestProperties {
 
 	/** Wraps the given api settings with the defaults for everything else. */
 	public static SteamProperties of(SteamProperties.Api api) {
-		return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false),
-				SteamProperties.Cache.defaults());
+		var cache = new SteamProperties.Cache(true, Duration.ofMinutes(5), Duration.ofMinutes(2),
+				Duration.ofMinutes(10), Duration.ofHours(24), Duration.ofMinutes(10));
+		return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), cache);
 	}
 
 	public static SteamProperties of(String key, String steamId) {
 		var api = new SteamProperties.Api(URI.create("https://api.steampowered.com"), key, steamId,
 				Duration.ofSeconds(3), Duration.ofSeconds(10), 2, Duration.ofMillis(200), Duration.ofSeconds(30), 4,
 				"english", false);
-		return new SteamProperties(api, new SteamProperties.Library(true), new SteamProperties.Store(false), SteamProperties.Cache.defaults());
+		return of(api);
+	}
+
+	public static SteamProperties withCacheDisabled(SteamProperties base) {
+		var c = base.cache();
+		var cache = new SteamProperties.Cache(false, c.ownedGamesTtl(), c.recentGamesTtl(), c.achievementsTtl(),
+				c.schemaTtl(), c.newsTtl());
+		return new SteamProperties(base.api(), base.library(), base.store(), cache);
 	}
 
 }

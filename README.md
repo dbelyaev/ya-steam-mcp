@@ -185,6 +185,9 @@ Documentation: [`docs/decisions.md`](docs/decisions.md) (all decisions and devia
 [`docs/skill-review.md`](docs/skill-review.md), [`docs/dependency-licenses.md`](docs/dependency-licenses.md),
 [`CHANGELOG.md`](CHANGELOG.md), and the original specification in `.tasks/`.
 
+## Hosting over HTTPS
+Planned, not supported yet: the server speaks STDIO only. See [docs/hosting.md](docs/hosting.md).
+
 ## Upgrade and rollback
 
 Releases are single jars. To roll back, point the host configuration at the previous jar and restart the host.

@@ -146,15 +146,6 @@ public record SteamProperties(@DefaultValue @Valid Api api, @DefaultValue Librar
 
 		private static final Duration MAX_TTL = Duration.ofDays(7);
 
-		public static Cache defaults() {
-			return new Cache(true, Duration.ofMinutes(5), Duration.ofMinutes(2), Duration.ofMinutes(10),
-					Duration.ofHours(24), Duration.ofMinutes(10));
-		}
-
-		public Cache disabled() {
-			return new Cache(false, ownedGamesTtl, recentGamesTtl, achievementsTtl, schemaTtl, newsTtl);
-		}
-
 		@AssertTrue(message = "steam.cache.*-ttl values must be between 1s and 7d")
 		public boolean isTtlInRange() {
 			return List.of(ownedGamesTtl, recentGamesTtl, achievementsTtl, schemaTtl, newsTtl).stream()

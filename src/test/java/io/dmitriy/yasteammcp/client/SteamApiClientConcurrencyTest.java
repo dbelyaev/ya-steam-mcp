@@ -26,6 +26,7 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 import io.dmitriy.yasteammcp.TestProperties;
 import io.dmitriy.yasteammcp.config.SteamHttpConfig;
+import io.dmitriy.yasteammcp.TestProperties;
 import io.dmitriy.yasteammcp.config.SteamProperties;
 import tools.jackson.databind.json.JsonMapper;
 
