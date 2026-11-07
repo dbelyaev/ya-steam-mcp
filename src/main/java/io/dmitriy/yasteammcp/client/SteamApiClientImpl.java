@@ -34,6 +34,8 @@ import tools.jackson.databind.json.JsonMapper;
 		timeoutString = "${steam.api.total-timeout:30s}")
 public class SteamApiClientImpl implements SteamApiClient {
 
+	private static final int MAX_BODY_BYTES = 16 * 1024 * 1024;
+
 	private static final Logger log = LoggerFactory.getLogger(SteamApiClientImpl.class);
 
 	private final SteamProperties.Api api;
@@ -103,7 +105,7 @@ public class SteamApiClientImpl implements SteamApiClient {
 	private Outcome attempt(String endpoint, Supplier<ResponseEntity<byte[]>> call) {
 		try {
 			ResponseEntity<byte[]> response = call.get();
-			return new Outcome(response.getStatusCode().value(), response.getBody());
+			return new Outcome(response.getStatusCode().value(), bounded(response.getBody()));
 		}
 		catch (ResourceAccessException ex) {
 			// message contains the request URI incl. key: log only the exception class
@@ -114,6 +116,10 @@ public class SteamApiClientImpl implements SteamApiClient {
 			log.warn("Steam {} request failed: {}", endpoint, ex.getClass().getName());
 			throw failure(ErrorCode.UPSTREAM_BAD_RESPONSE);
 		}
+	}
+
+	private static byte @Nullable [] bounded(byte @Nullable [] body) {
+		return body != null && body.length > MAX_BODY_BYTES ? null : body;
 	}
 
 	private <T> T parse(byte @Nullable [] body, Class<T> type, Function<T, @Nullable Object> envelope) {

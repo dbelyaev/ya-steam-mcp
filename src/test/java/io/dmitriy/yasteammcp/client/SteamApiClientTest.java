@@ -218,6 +218,17 @@ class SteamApiClientTest {
 	}
 
 	@Test
+	void getOwnedGames_whenBodyExceeds16MiB_shouldThrowBadResponse() {
+		// Given: otherwise valid JSON padded past the cap
+		String padding = "x".repeat(16 * 1024 * 1024 + 1);
+		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
+			.willReturn(json(200, "{\"response\":{\"game_count\":0,\"pad\":\"" + padding + "\"}}")));
+
+		// When / Then
+		assertThatThrownBy(() -> client(0).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
+	}
+
+	@Test
 	void getOwnedGames_whenJsonMalformed_shouldThrowBadResponseWithoutBody() {
 		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
