@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -71,7 +72,7 @@ public class AchievementService {
 
 		List<Achievement> all = player.stream()
 			.map(p -> AchievementMapper.toAchievement(p, p.apiname() == null ? null : schema.get(p.apiname())))
-			.filter(java.util.Objects::nonNull)
+			.filter(Objects::nonNull)
 			.toList();
 		List<Achievement> filtered = all.stream().filter(a -> withLocked || a.achieved()).toList();
 		List<Achievement> page = filtered.size() > max ? filtered.subList(0, max) : filtered;
