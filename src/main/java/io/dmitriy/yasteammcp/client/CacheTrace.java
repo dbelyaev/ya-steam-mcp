@@ -1,6 +1,7 @@
 package io.dmitriy.yasteammcp.client;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /**
  * Records, for one tool call, how many upstream reads were served from the cache. Bound with a
@@ -15,8 +16,8 @@ public final class CacheTrace {
 
 	private final AtomicInteger misses = new AtomicInteger();
 
-	/** Runs the action with a fresh trace bound and returns the trace afterwards via the callback. */
-	public static <T> T within(CacheTrace trace, java.util.function.Supplier<T> action) {
+	/** Runs the action with this trace bound and returns the action's result. */
+	public static <T> T within(CacheTrace trace, Supplier<T> action) {
 		return ScopedValue.where(CURRENT, trace).call(action::get);
 	}
 

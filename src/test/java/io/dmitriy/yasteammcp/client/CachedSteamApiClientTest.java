@@ -218,7 +218,7 @@ class CachedSteamApiClientTest {
 	void anyEndpoint_whenCacheDisabled_shouldAlwaysCallUpstream() {
 		// Given
 		SteamProperties base = TestProperties.withCredentials();
-		var disabled = new SteamProperties(base.api(), base.library(), base.store(), base.cache().disabled());
+		var disabled = TestProperties.withCacheDisabled(base);
 		var uncached = new CachedSteamApiClient(delegate, disabled, ticker);
 		when(delegate.getOwnedGames()).thenReturn(owned(1));
 
