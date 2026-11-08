@@ -37,10 +37,26 @@ public final class BoundedResponseInterceptor implements ClientHttpRequestInterc
 			throws IOException {
 		ClientHttpResponse response = execution.execute(request, body);
 		if (response.getHeaders().getContentLength() > maxBytes) {
-			response.close();
+			discard(response);
 			throw new ResponseTooLargeException();
 		}
 		return new Bounded(response, maxBytes);
+	}
+
+	/**
+	 * Closes the raw body stream first: the JDK-backed response drains the remaining body in {@code close()},
+	 * which would read an oversize or endless body to the end and hold the connection (and concurrency slot).
+	 */
+	static void discard(ClientHttpResponse response) {
+		try {
+			response.getBody().close();
+		}
+		catch (IOException _) {
+			// already failing; nothing to add
+		}
+		finally {
+			response.close();
+		}
 	}
 
 	/** Thrown when an upstream body exceeds the cap. Fixed message: nothing from the response or URI. */
@@ -148,6 +164,12 @@ public final class BoundedResponseInterceptor implements ClientHttpRequestInterc
 		private void add(long n) {
 			count += n;
 			if (count > max) {
+				try {
+					in.close();
+				}
+				catch (IOException _) {
+					// the overflow is the error being reported
+				}
 				throw new ResponseTooLargeException();
 			}
 		}
