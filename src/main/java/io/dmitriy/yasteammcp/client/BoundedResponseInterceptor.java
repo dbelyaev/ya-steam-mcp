@@ -51,7 +51,7 @@ public final class BoundedResponseInterceptor implements ClientHttpRequestInterc
 		try {
 			response.getBody().close();
 		}
-		catch (IOException _) {
+		catch (IOException | RuntimeException _) {
 			// already failing; nothing to add
 		}
 		finally {
@@ -108,7 +108,8 @@ public final class BoundedResponseInterceptor implements ClientHttpRequestInterc
 
 		@Override
 		public void close() {
-			delegate.close();
+			// may run before the body was read (early status/header rejection): never let the delegate drain it
+			discard(delegate);
 		}
 
 	}

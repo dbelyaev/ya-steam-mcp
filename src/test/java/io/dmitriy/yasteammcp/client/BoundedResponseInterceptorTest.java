@@ -188,4 +188,22 @@ class BoundedResponseInterceptorTest {
 		assertThat(body.produced).isLessThanOrEqualTo(1001);
 	}
 
+	@Test
+	void close_beforeAnyBodyRead_shouldCloseBodyFirstAndNotDrain() throws IOException {
+		// Given: headers accepted (no or small Content-Length), body endless
+		var events = new java.util.ArrayList<String>();
+		var body = new TrackingStream(events);
+		var interceptor = new BoundedResponseInterceptor(1000);
+		var request = new MockClientHttpRequest(HttpMethod.GET, java.net.URI.create("http://localhost/x"));
+		ClientHttpResponse response = interceptor.intercept(request, new byte[0],
+				(r, b) -> new DrainingResponse(body, -1));
+
+		// When: RestClient closes the response without consuming the body
+		response.close();
+
+		// Then
+		assertThat(events).containsExactly("body.close", "response.close");
+		assertThat(body.produced).isZero();
+	}
+
 }
