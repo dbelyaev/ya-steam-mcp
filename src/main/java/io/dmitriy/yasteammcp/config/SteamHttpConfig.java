@@ -17,6 +17,7 @@ import org.springframework.web.service.registry.ImportHttpServices;
 
 import com.github.benmanes.caffeine.cache.Ticker;
 
+import io.dmitriy.yasteammcp.client.BoundedResponseInterceptor;
 import io.dmitriy.yasteammcp.client.CachedSteamApiClient;
 import io.dmitriy.yasteammcp.client.ConcurrencyLimitedSteamWebApi;
 import io.dmitriy.yasteammcp.client.SteamApiClient;
@@ -51,6 +52,7 @@ public class SteamHttpConfig {
 			.withRedirects(HttpRedirects.DONT_FOLLOW);
 		return builder.baseUrl(api.baseUrl().toString())
 			.requestFactory(ClientHttpRequestFactoryBuilder.jdk().build(settings))
+			.requestInterceptor(new BoundedResponseInterceptor())
 			.defaultStatusHandler(status -> true, (request, response) -> {
 			});
 	}
