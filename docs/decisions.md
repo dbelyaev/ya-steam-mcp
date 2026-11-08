@@ -96,3 +96,6 @@ The project and repository were renamed from `yasmcp` to `ya-steam-mcp` (owner d
 
 ## D24 - HTTPS hosting planned (2026-11-07)
 The owner plans to host the server on the internet sometimes. Not implemented; prerequisites and target setup are in `docs/hosting.md`. `@ConcurrencyLimit` (D11a) and `SteamIdValidator.requireValid` are kept for it even though STDIO does not need them.
+
+## D25 - Response size cap enforced while reading (2026-11-08)
+The 16 MiB cap used to be checked after the whole body was in a `byte[]`, so four concurrent calls could hold 64 MiB+ from a hostile upstream. `BoundedResponseInterceptor` (a `RestClient` interceptor installed in `SteamHttpConfig.customize`) now rejects a declared `Content-Length` above the cap before reading, and otherwise wraps the body stream so it aborts at cap + 1 byte (chunked or lying upstream); at most one read chunk beyond the cap is ever buffered. The failure is an unchecked `ResponseTooLargeException` with a fixed message, not an `IOException`, so it maps to `UPSTREAM_BAD_RESPONSE` and is not retried (an I/O error would be treated as transient). A body of exactly 16 MiB is accepted. A lower per-endpoint cap was not added: the cap is one constant for all five endpoints and `GetOwnedGames`/`GetSchemaForGame` can legitimately be large.

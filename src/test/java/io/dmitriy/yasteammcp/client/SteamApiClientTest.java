@@ -229,6 +229,47 @@ class SteamApiClientTest {
 	}
 
 	@Test
+	void getOwnedGames_whenOversizeWithContentLength_shouldFailFastWithoutRetry() {
+		// Given
+		String padding = "x".repeat(16 * 1024 * 1024 + 1);
+		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
+			.willReturn(json(200, "{\"response\":{\"game_count\":0,\"pad\":\"" + padding + "\"}}")));
+
+		// When / Then: bad response, not a transient failure, so no retry
+		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
+		assertThat(server.getAllServeEvents()).hasSize(1);
+	}
+
+	@Test
+	void getOwnedGames_whenOversizeChunkedWithoutContentLength_shouldThrowBadResponse() {
+		// Given: chunked transfer, so there is no Content-Length to check up front
+		String padding = "x".repeat(16 * 1024 * 1024 + 1);
+		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
+			.willReturn(json(200, "{\"response\":{\"game_count\":0,\"pad\":\"" + padding + "\"}}")
+				.withChunkedDribbleDelay(8, 0)));
+
+		// When / Then
+		assertThatThrownBy(() -> client(2).getOwnedGames()).satisfies(ex -> assertCode(ex, ErrorCode.UPSTREAM_BAD_RESPONSE));
+		assertThat(server.getAllServeEvents()).hasSize(1);
+	}
+
+	@Test
+	void getOwnedGames_whenBodyExactlyAtLimit_shouldSucceed() {
+		// Given: valid JSON of exactly 16 MiB
+		String prefix = "{\"response\":{\"game_count\":0,\"pad\":\"";
+		String suffix = "\"}}";
+		String padding = "x".repeat(16 * 1024 * 1024 - prefix.length() - suffix.length());
+		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
+			.willReturn(json(200, prefix + padding + suffix)));
+
+		// When
+		var r = client(0).getOwnedGames();
+
+		// Then
+		assertThat(requireNonNull(r.response()).gameCount()).isZero();
+	}
+
+	@Test
 	void getOwnedGames_whenJsonMalformed_shouldThrowBadResponseWithoutBody() {
 		// Given
 		server.stubFor(get(urlPathEqualTo("/IPlayerService/GetOwnedGames/v1/"))
