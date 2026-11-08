@@ -77,6 +77,26 @@ class AchievementMapperTest {
 	}
 
 	@Test
+	void toAchievement_whenHostileText_shouldSanitizeAndCap() {
+		var schema = new GameSchemaResponse.Achievement("A", "Win" + Character.toString(0x202E) + "\nnow\u0000", "d".repeat(900), 0);
+
+		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, null, null), schema));
+
+		assertThat(result.displayName()).isEqualTo("Win now");
+		assertThat(result.description()).hasSize(500).endsWith("\u2026");
+	}
+
+	@Test
+	void toAchievement_whenSchemaTextOnlyHidden_shouldFallBackToPlayerText() {
+		var schema = new GameSchemaResponse.Achievement("A", Character.toString(0x200B) + Character.toString(0x202E), "\u0000", 0);
+
+		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, "Player name", "Player desc"), schema));
+
+		assertThat(result.displayName()).isEqualTo("Player name");
+		assertThat(result.description()).isEqualTo("Player desc");
+	}
+
+	@Test
 	void toAchievement_whenNoSchemaAndNoText_shouldLeaveTextAndHiddenNull() {
 		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, " ", null), null));
 

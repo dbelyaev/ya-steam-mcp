@@ -3,6 +3,7 @@ package io.dmitriy.yasteammcp.model;
 import org.jspecify.annotations.Nullable;
 
 import io.dmitriy.yasteammcp.steamdto.OwnedGamesResponse;
+import io.dmitriy.yasteammcp.support.TextSanitizer;
 
 /** Public view of one owned game. All playtimes are minutes. Missing upstream fields stay null. */
 public record GameSummary(
@@ -17,7 +18,7 @@ public record GameSummary(
 
 	/** Steam only returns an icon hash; building an image URL from it is undocumented, so iconUrl stays null. */
 	public static GameSummary from(OwnedGamesResponse.Game game) {
-		return new GameSummary(game.appid(), game.name(), game.playtimeForever(), game.playtimeWindowsForever(),
+		return new GameSummary(game.appid(), TextSanitizer.plainText(game.name(), TextSanitizer.MAX_NAME_CHARS), game.playtimeForever(), game.playtimeWindowsForever(),
 				game.playtimeMacForever(), game.playtimeLinuxForever(), null, StoreUrls.app(game.appid()));
 	}
 

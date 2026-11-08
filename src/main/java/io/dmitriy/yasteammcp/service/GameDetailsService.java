@@ -20,6 +20,7 @@ import io.dmitriy.yasteammcp.model.SteamException;
 import io.dmitriy.yasteammcp.steamdto.GameSchemaResponse;
 import io.dmitriy.yasteammcp.support.AppIdValidator;
 import io.dmitriy.yasteammcp.support.SteamLanguage;
+import io.dmitriy.yasteammcp.support.TextSanitizer;
 
 /**
  * Basic metadata from official sources only: the owned library and the game schema. Fields that
@@ -104,7 +105,7 @@ public class GameDetailsService {
 	private record SchemaLookup(GameSchemaResponse.@Nullable Game game, @Nullable SteamException failure) {
 
 		@Nullable String name() {
-			return game == null ? null : game.gameName();
+			return game == null ? null : TextSanitizer.plainText(game.gameName(), TextSanitizer.MAX_NAME_CHARS);
 		}
 
 		boolean hasData() {
