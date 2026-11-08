@@ -97,6 +97,17 @@ class AchievementMapperTest {
 	}
 
 	@Test
+	void toAchievement_whenSchemaTextOnlyInvisibleFormatChars_shouldFallBackToPlayerText() {
+		String invisible = new String(new int[] { 0x2060, 0x00AD, 0x061C, 0x2063 }, 0, 4);
+		var schema = new GameSchemaResponse.Achievement("A", invisible, invisible, 0);
+
+		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, "Player name", "Player desc"), schema));
+
+		assertThat(result.displayName()).isEqualTo("Player name");
+		assertThat(result.description()).isEqualTo("Player desc");
+	}
+
+	@Test
 	void toAchievement_whenNoSchemaAndNoText_shouldLeaveTextAndHiddenNull() {
 		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, " ", null), null));
 
