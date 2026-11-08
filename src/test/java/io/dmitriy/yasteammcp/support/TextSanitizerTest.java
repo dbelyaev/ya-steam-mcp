@@ -159,15 +159,101 @@ class TextSanitizerTest {
 		assertThat(result).isEqualTo("a b c xxx\u2026");
 	}
 
-	/** Endless-looking text that records how much of it was read and refuses to be copied wholesale. */
+	@ParameterizedTest
+	@ValueSource(ints = { ' ', 0x200B, 0x2060, 0x0301, 0x034F, 0x00A0 })
+	void plainText_whenLongRunOfNothingVisibleBeforeTitle_shouldStopScanningAndReturnNull(int fill) {
+		CountingSequence input = new CountingSequence(5_000_000, (char) fill, "Title");
+
+		String result = TextSanitizer.plainText(input, 200);
+
+		assertThat(result).isNull();
+		assertThat(input.reads()).isLessThan(5_000);
+	}
+
+	@Test
+	void plainText_whenVisibleTextThenHugeInvisibleRun_shouldReturnCollectedTextWithEllipsis() {
+		String head = "Hello" + "\u200B".repeat(3);
+		CountingSequence input = new CountingSequence(5_000_000, '\u2060', "Tail");
+
+		assertThat(TextSanitizer.plainText(new Joined(head, input), 200)).isEqualTo("Hello\u2026");
+		assertThat(input.reads()).isLessThan(5_000);
+	}
+
+	@Test
+	void plainText_whenManyLeadingMarksThenTitle_shouldDropMarksAndKeepTitle() {
+		assertThat(TextSanitizer.plainText(cp(0x034F).repeat(250) + "Game", 200)).isEqualTo("Game");
+		assertThat(TextSanitizer.plainText(cp(0xFE0F).repeat(250) + "Game", 200)).isEqualTo("Game");
+		assertThat(TextSanitizer.plainText(cp(0x0301).repeat(250) + " " + cp(0xE0100).repeat(5) + "Game", 200))
+			.isEqualTo("Game");
+		assertThat(TextSanitizer.plainText(cp(0x2060, 0x0301) + "Game", 200)).isEqualTo("Game");
+	}
+
+	@Test
+	void plainText_whenMarksFollowVisibleBase_shouldStillKeepThem() {
+		String text = "Game" + cp(0x0301) + " e" + cp(0x0301) + " " + cp(0x2764, 0xFE0F) + cp(0x8FBB, 0xE0100);
+
+		assertThat(TextSanitizer.plainText(text, 200)).isEqualTo(text);
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = { 0x00A0, 0x2007, 0x202F, 0x3000, 0x2003 })
+	void plainText_whenManySpaceSeparatorsBeforeTitle_shouldCollapseThem(int space) {
+		assertThat(TextSanitizer.plainText(cp(space).repeat(201) + "Portal", 200)).isEqualTo("Portal");
+		assertThat(TextSanitizer.plainText("a" + cp(space) + "b", 200)).isEqualTo("a b");
+	}
+
+	@Test
+	void plainText_whenMixedUnicodeSpaceRuns_shouldCollapseToOneSpace() {
+		String mixed = "a" + cp(0x00A0, ' ', 0x2007, 0x202F, 0x3000, '\t', 0x2003) + "b";
+
+		assertThat(TextSanitizer.plainText(mixed, 200)).isEqualTo("a b");
+	}
+
+	/** Concatenation of a short string and a counting sequence, without copying either. */
+	private record Joined(String head, CountingSequence rest) implements CharSequence {
+
+		@Override
+		public int length() {
+			return head.length() + rest.length();
+		}
+
+		@Override
+		public char charAt(int index) {
+			return index < head.length() ? head.charAt(index) : rest.charAt(index - head.length());
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			throw new AssertionError("whole input must not be copied");
+		}
+
+		@Override
+		public String toString() {
+			throw new AssertionError("whole input must not be copied");
+		}
+
+	}
+
+
+	/** Long run of one character, then a tail; records how much was read and refuses to be copied wholesale. */
 	private static final class CountingSequence implements CharSequence {
 
 		private final int length;
 
+		private final char fill;
+
+		private final String tail;
+
 		private int reads;
 
 		CountingSequence(int length) {
-			this.length = length;
+			this(length, 'a', "");
+		}
+
+		CountingSequence(int length, char fill, String tail) {
+			this.length = length + tail.length();
+			this.fill = fill;
+			this.tail = tail;
 		}
 
 		int reads() {
@@ -182,7 +268,8 @@ class TextSanitizerTest {
 		@Override
 		public char charAt(int index) {
 			reads++;
-			return 'a';
+			int tailStart = length - tail.length();
+			return index < tailStart ? fill : tail.charAt(index - tailStart);
 		}
 
 		@Override

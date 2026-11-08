@@ -20,6 +20,15 @@ public final class TextSanitizer {
 
 	private static final int VARIATION_SELECTOR_16 = 0xFE0F;
 
+	/** Input code points scanned per output code point allowed. */
+	private static final int SCAN_FACTOR = 8;
+
+	/** Smallest scan budget, so short caps still tolerate some padding. */
+	private static final int MIN_SCAN_BUDGET = 1024;
+
+	/** Largest scan budget, so a large cap cannot turn into an unbounded scan. */
+	private static final int MAX_SCAN_BUDGET = 65_536;
+
 	private static final String ELLIPSIS = "\u2026";
 
 	private TextSanitizer() {
@@ -28,12 +37,17 @@ public final class TextSanitizer {
 	/**
 	 * Single-line inert text for a label or description. One streaming pass over the code points: line
 	 * breaks and whitespace runs collapse to one space, hidden characters are dropped (see
-	 * {@link #stripHidden}), and reading stops as soon as more than {@code maxChars} code points of
-	 * output exist, so the cost is bounded by the cap and not by the input size.
+	 * {@link #stripHidden}), and marks or selectors with no visible base before them are dropped
+	 * without using the cap. Reading stops as soon as more than {@code maxChars} code points of
+	 * output exist, or when the scan budget is spent: {@code clamp(8 * maxChars, 1024, 65536)} input
+	 * code points, counting every one read (whitespace, stripped and dropped characters included).
+	 * Cost is therefore bounded by the cap, not by the input size. When the budget runs out the text
+	 * is treated as truncated: what was collected so far is returned with an ellipsis, or {@code null}
+	 * if no visible base character was seen yet.
 	 *
-	 * @return {@code null} when {@code raw} is null or contains no visible base character (only
-	 * whitespace, marks, selectors or invisible characters); otherwise the cleaned text of at most
-	 * {@code maxChars} code points (ellipsis included)
+	 * @return {@code null} when {@code raw} is null or contains no visible base character in the
+	 * scanned part (only whitespace, marks, selectors or invisible characters); otherwise the cleaned
+	 * text of at most {@code maxChars} code points (ellipsis included)
 	 */
 	public static @Nullable String plainText(@Nullable CharSequence raw, int maxChars) {
 		if (raw == null || maxChars <= 0) {
@@ -45,7 +59,14 @@ public final class TextSanitizer {
 		boolean pendingSpace = false;
 		boolean visible = false;
 		boolean afterPictograph = false;
+		boolean exhausted = false;
+		long budget = Math.min(Math.max((long) SCAN_FACTOR * maxChars, MIN_SCAN_BUDGET), MAX_SCAN_BUDGET);
+		long scanned = 0;
 		for (int i = 0; i < length;) {
+			if (++scanned > budget) {
+				exhausted = true;
+				break;
+			}
 			int cp = Character.codePointAt(raw, i);
 			i += Character.charCount(cp);
 			boolean keep = keeps(cp, afterPictograph, i < length ? Character.codePointAt(raw, i) : -1);
@@ -53,7 +74,7 @@ public final class TextSanitizer {
 			if (isSpaceLike(cp)) {
 				pendingSpace = count > 0;
 			}
-			else if (keep) {
+			else if (keep && (visible || !isMark(cp))) {
 				if (pendingSpace) {
 					out.append(' ');
 					count++;
@@ -67,7 +88,10 @@ public final class TextSanitizer {
 				}
 			}
 		}
-		return visible ? truncate(out.toString(), maxChars) : null;
+		if (!visible) {
+			return null;
+		}
+		return truncate(exhausted ? out + ELLIPSIS : out.toString(), maxChars);
 	}
 
 	/**
@@ -115,7 +139,13 @@ public final class TextSanitizer {
 	}
 
 	private static boolean isSpaceLike(int cp) {
-		return Character.isWhitespace(cp) || cp == '\u0085' || cp == '\u2028' || cp == '\u2029';
+		return Character.isWhitespace(cp) || Character.isSpaceChar(cp) || cp == '\u0085' || cp == '\u2028' || cp == '\u2029';
+	}
+
+	private static boolean isMark(int cp) {
+		int type = Character.getType(cp);
+		return type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK
+				|| type == Character.COMBINING_SPACING_MARK;
 	}
 
 	/** A base character a reader can see: not a mark, separator, control, format, unassigned, private or surrogate. */
