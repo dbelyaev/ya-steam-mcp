@@ -36,13 +36,16 @@ public final class NewsSanitizer {
 		if (raw == null || maxChars <= 0) {
 			return "";
 		}
-		String text = SCRIPT_OR_STYLE_BLOCK.matcher(raw).replaceAll(" ");
+		// Hidden characters go first: stripping them later would re-join "<\u2060script>" into a live tag
+		// after the markup filters had already run. Every later step replaces what it removes with a
+		// space, so no removal can glue two fragments into new markup.
+		String text = TextSanitizer.stripHidden(raw);
+		text = SCRIPT_OR_STYLE_BLOCK.matcher(text).replaceAll(" ");
 		text = HTML_COMMENT.matcher(text).replaceAll(" ");
 		text = HTML_TAG.matcher(text).replaceAll(" ");
 		text = BBCODE_TAG.matcher(text).replaceAll(" ");
 		text = STEAM_PLACEHOLDER.matcher(text).replaceAll(" ");
 		text = text.replace("&nbsp;", " ").replace("&quot;", "\"").replace("&#39;", "'").replace("&amp;", "&");
-		text = TextSanitizer.stripHidden(text);
 		text = BLANK_RUNS.matcher(text).replaceAll(" ");
 		text = NEWLINE_RUNS.matcher(text).replaceAll("\n").strip();
 		return TextSanitizer.truncate(text, maxChars);

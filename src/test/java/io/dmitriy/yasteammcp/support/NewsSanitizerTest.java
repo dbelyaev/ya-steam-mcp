@@ -136,4 +136,20 @@ class NewsSanitizerTest {
 		assertThat(NewsSanitizer.safeHttpsUrl("https://example.com/" + "a".repeat(3000))).isNull();
 	}
 
+	@ParameterizedTest
+	@ValueSource(ints = { 0x2060, 0x200B, 0x00AD, 0x202E, 0xE0041, 0x200D, 0x061C })
+	void toPlainText_withInvisibleCharsInsideTags_shouldNotLetMarkupSurvive(int invisible) {
+		String hidden = new String(new int[] { invisible }, 0, 1);
+
+		String script = NewsSanitizer.toPlainText("Safe <" + hidden + "script>alert(1)</" + hidden + "script> tail", 500);
+		String link = NewsSanitizer.toPlainText("<" + hidden + "a href=\"https://x.example\">go</" + hidden + "a>", 500);
+		String js = NewsSanitizer.toPlainText("<a href=\"java" + hidden + "script:alert(1)\">go</a>", 500);
+		String style = NewsSanitizer.toPlainText("A<st" + hidden + "yle>p{x:y}</st" + hidden + "yle>B", 500);
+
+		assertThat(script).isEqualTo("Safe tail");
+		assertThat(link).isEqualTo("go");
+		assertThat(js).isEqualTo("go");
+		assertThat(style).isEqualTo("A B");
+	}
+
 }

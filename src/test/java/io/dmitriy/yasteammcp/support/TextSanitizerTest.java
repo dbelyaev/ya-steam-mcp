@@ -120,4 +120,81 @@ class TextSanitizerTest {
 		assertThat(TextSanitizer.plainText(heart, 200)).isEqualTo(heart);
 	}
 
+	@Test
+	void plainText_whenOnlyCombiningGraphemeJoinerOrSelectorsOrMarks_shouldReturnNull() {
+		assertThat(TextSanitizer.plainText(cp(0x034F), 200)).isNull();
+		assertThat(TextSanitizer.plainText(cp(0xFE0F), 200)).isNull();
+		assertThat(TextSanitizer.plainText(cp(0xFE00, 0xFE0F, 0xE0100, 0xE01EF), 200)).isNull();
+		assertThat(TextSanitizer.plainText(cp(0x0301, 0x0300, 0x20DD), 200)).isNull();
+		assertThat(TextSanitizer.plainText(" " + cp(0x034F) + " ", 200)).isNull();
+	}
+
+	@Test
+	void plainText_whenSelectorsAndMarksAttachedToBase_shouldPreserve() {
+		String emoji = cp(0x2764, 0xFE0F);
+		String accent = "e" + cp(0x0301);
+		String cjkSelector = cp(0x8FBB, 0xE0100);
+
+		assertThat(TextSanitizer.plainText(emoji, 200)).isEqualTo(emoji);
+		assertThat(TextSanitizer.plainText(accent, 200)).isEqualTo(accent);
+		assertThat(TextSanitizer.plainText(cjkSelector, 200)).isEqualTo(cjkSelector);
+	}
+
+	@Test
+	void plainText_whenHugeInput_shouldStopReadingOnceCapIsKnown() {
+		CountingSequence huge = new CountingSequence(20_000_000);
+
+		String result = TextSanitizer.plainText(huge, 200);
+
+		assertThat(result).hasSize(200).endsWith("\u2026");
+		assertThat(huge.reads()).isLessThan(2_000);
+	}
+
+	@Test
+	void plainText_whenLongInputWithSpacesAndInvisibles_shouldMatchBufferedResult() {
+		String raw = "  a  b" + cp(0x2060) + "\t\nc " + "x".repeat(300);
+
+		String result = TextSanitizer.plainText(raw, 10);
+
+		assertThat(result).isEqualTo("a b c xxx\u2026");
+	}
+
+	/** Endless-looking text that records how much of it was read and refuses to be copied wholesale. */
+	private static final class CountingSequence implements CharSequence {
+
+		private final int length;
+
+		private int reads;
+
+		CountingSequence(int length) {
+			this.length = length;
+		}
+
+		int reads() {
+			return reads;
+		}
+
+		@Override
+		public int length() {
+			return length;
+		}
+
+		@Override
+		public char charAt(int index) {
+			reads++;
+			return 'a';
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			throw new AssertionError("whole input must not be copied");
+		}
+
+		@Override
+		public String toString() {
+			throw new AssertionError("whole input must not be copied");
+		}
+
+	}
+
 }

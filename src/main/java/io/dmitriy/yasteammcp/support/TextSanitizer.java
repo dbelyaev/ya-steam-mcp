@@ -1,7 +1,5 @@
 package io.dmitriy.yasteammcp.support;
 
-import java.util.regex.Pattern;
-
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -22,29 +20,54 @@ public final class TextSanitizer {
 
 	private static final int VARIATION_SELECTOR_16 = 0xFE0F;
 
-	private static final Pattern LINE_BREAKS = Pattern.compile("[\\r\\n\\t\\u2028\\u2029\\u0085]+");
-
-	private static final Pattern BLANK_RUNS = Pattern.compile("[ \\t]+");
-
 	private static final String ELLIPSIS = "\u2026";
 
 	private TextSanitizer() {
 	}
 
 	/**
-	 * Single-line inert text for a label or description.
+	 * Single-line inert text for a label or description. One streaming pass over the code points: line
+	 * breaks and whitespace runs collapse to one space, hidden characters are dropped (see
+	 * {@link #stripHidden}), and reading stops as soon as more than {@code maxChars} code points of
+	 * output exist, so the cost is bounded by the cap and not by the input size.
 	 *
-	 * @return {@code null} when {@code raw} is null or has no visible content left; otherwise the cleaned
-	 * text of at most {@code maxChars} code points (ellipsis included)
+	 * @return {@code null} when {@code raw} is null or contains no visible base character (only
+	 * whitespace, marks, selectors or invisible characters); otherwise the cleaned text of at most
+	 * {@code maxChars} code points (ellipsis included)
 	 */
-	public static @Nullable String plainText(@Nullable String raw, int maxChars) {
+	public static @Nullable String plainText(@Nullable CharSequence raw, int maxChars) {
 		if (raw == null || maxChars <= 0) {
 			return null;
 		}
-		String text = LINE_BREAKS.matcher(raw).replaceAll(" ");
-		text = stripHidden(text);
-		text = BLANK_RUNS.matcher(text).replaceAll(" ").strip();
-		return text.isEmpty() ? null : truncate(text, maxChars);
+		int length = raw.length();
+		StringBuilder out = new StringBuilder(Math.min(length, maxChars + 2));
+		int count = 0;
+		boolean pendingSpace = false;
+		boolean visible = false;
+		boolean afterPictograph = false;
+		for (int i = 0; i < length;) {
+			int cp = Character.codePointAt(raw, i);
+			i += Character.charCount(cp);
+			boolean keep = keeps(cp, afterPictograph, i < length ? Character.codePointAt(raw, i) : -1);
+			afterPictograph = pictographAfter(cp, afterPictograph);
+			if (isSpaceLike(cp)) {
+				pendingSpace = count > 0;
+			}
+			else if (keep) {
+				if (pendingSpace) {
+					out.append(' ');
+					count++;
+					pendingSpace = false;
+				}
+				out.appendCodePoint(cp);
+				count++;
+				visible |= isVisibleBase(cp);
+				if (count > maxChars) {
+					break;
+				}
+			}
+		}
+		return visible ? truncate(out.toString(), maxChars) : null;
 	}
 
 	/**
@@ -53,36 +76,57 @@ public final class TextSanitizer {
 	 * joiner, invisible operators, BOM, and the U+E0000 tag block that can smuggle invisible ASCII.
 	 * The one exception is U+200D (zero width joiner), kept only when it sits between two extended
 	 * pictographs (skipping variation selectors and skin tone modifiers before it), so emoji
-	 * sequences such as a woman technologist survive. Works on code points, so surrogate pairs are
-	 * handled.
+	 * sequences such as a woman technologist survive. Works on code points without copying them into
+	 * an array, so surrogate pairs are handled and extra memory is one output buffer.
 	 */
-	static String stripHidden(String text) {
-		int[] cps = text.codePoints().toArray();
-		StringBuilder out = new StringBuilder(text.length());
-		for (int i = 0; i < cps.length; i++) {
-			int cp = cps[i];
-			if (cp == '\n' || cp == '\t' || !isHidden(cp) || isJoinerInsideEmoji(cps, i)) {
+	static String stripHidden(CharSequence text) {
+		int length = text.length();
+		StringBuilder out = new StringBuilder(length);
+		boolean afterPictograph = false;
+		for (int i = 0; i < length;) {
+			int cp = Character.codePointAt(text, i);
+			i += Character.charCount(cp);
+			if (keeps(cp, afterPictograph, i < length ? Character.codePointAt(text, i) : -1)) {
 				out.appendCodePoint(cp);
 			}
+			afterPictograph = pictographAfter(cp, afterPictograph);
 		}
 		return out.toString();
 	}
 
-	private static boolean isHidden(int cp) {
+	/** Newline and tab pass; control and format characters are dropped; a ZWJ survives inside emoji. */
+	private static boolean keeps(int cp, boolean afterPictograph, int next) {
+		if (cp == '\n' || cp == '\t') {
+			return true;
+		}
 		int type = Character.getType(cp);
-		return type == Character.CONTROL || type == Character.FORMAT;
+		if (type != Character.CONTROL && type != Character.FORMAT) {
+			return true;
+		}
+		return cp == ZERO_WIDTH_JOINER && afterPictograph && next >= 0 && Character.isExtendedPictographic(next);
 	}
 
-	private static boolean isJoinerInsideEmoji(int[] cps, int index) {
-		if (cps[index] != ZERO_WIDTH_JOINER || index + 1 >= cps.length
-				|| !Character.isExtendedPictographic(cps[index + 1])) {
-			return false;
+	/** Whether the last code point that is not a selector or skin tone modifier is an extended pictograph. */
+	private static boolean pictographAfter(int cp, boolean previous) {
+		if (cp == VARIATION_SELECTOR_16 || Character.isEmojiModifier(cp)) {
+			return previous;
 		}
-		int before = index - 1;
-		while (before >= 0 && (cps[before] == VARIATION_SELECTOR_16 || Character.isEmojiModifier(cps[before]))) {
-			before--;
-		}
-		return before >= 0 && Character.isExtendedPictographic(cps[before]);
+		return Character.isExtendedPictographic(cp);
+	}
+
+	private static boolean isSpaceLike(int cp) {
+		return Character.isWhitespace(cp) || cp == '\u0085' || cp == '\u2028' || cp == '\u2029';
+	}
+
+	/** A base character a reader can see: not a mark, separator, control, format, unassigned, private or surrogate. */
+	private static boolean isVisibleBase(int cp) {
+		return switch (Character.getType(cp)) {
+			case Character.NON_SPACING_MARK, Character.ENCLOSING_MARK, Character.COMBINING_SPACING_MARK,
+					Character.SPACE_SEPARATOR, Character.LINE_SEPARATOR, Character.PARAGRAPH_SEPARATOR,
+					Character.CONTROL, Character.FORMAT, Character.UNASSIGNED, Character.PRIVATE_USE,
+					Character.SURROGATE -> false;
+			default -> true;
+		};
 	}
 
 	/** Cuts to {@code maxChars} code points, ending with an ellipsis when something was removed. */
