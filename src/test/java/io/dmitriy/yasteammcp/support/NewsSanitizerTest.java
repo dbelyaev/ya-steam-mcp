@@ -152,4 +152,15 @@ class NewsSanitizerTest {
 		assertThat(style).isEqualTo("A B");
 	}
 
+	@Test
+	void toPlainText_withEmojiSequencesAndHangulFiller_shouldPreserveEmojiAndStripFiller() {
+		String heart = new String(new int[] { 0x2764, 0xFE0F }, 0, 2);
+		String technologist = new String(new int[] { 0x1F469, 0x200D, 0x1F4BB }, 0, 3);
+		String filler = new String(new int[] { 0x3164 }, 0, 1);
+
+		String text = NewsSanitizer.toPlainText("<p>" + heart + " " + technologist + " Hi" + filler + "there</p>", 500);
+
+		assertThat(text).isEqualTo(heart + " " + technologist + " Hithere");
+	}
+
 }

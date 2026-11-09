@@ -108,6 +108,17 @@ class AchievementMapperTest {
 	}
 
 	@Test
+	void toAchievement_whenSchemaTextOnlyHangulFiller_shouldFallBackToPlayerText() {
+		String filler = new String(new int[] { 0x3164 }, 0, 1);
+		var schema = new GameSchemaResponse.Achievement("A", filler, filler.repeat(3), 0);
+
+		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, "Player name", "Player desc"), schema));
+
+		assertThat(result.displayName()).isEqualTo("Player name");
+		assertThat(result.description()).isEqualTo("Player desc");
+	}
+
+	@Test
 	void toAchievement_whenNoSchemaAndNoText_shouldLeaveTextAndHiddenNull() {
 		var result = requireNonNull(AchievementMapper.toAchievement(player("A", 0, null, " ", null), null));
 

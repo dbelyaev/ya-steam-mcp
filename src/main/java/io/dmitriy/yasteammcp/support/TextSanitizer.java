@@ -55,10 +55,10 @@ public final class TextSanitizer {
 		}
 		int length = raw.length();
 		StringBuilder out = new StringBuilder(Math.min(length, maxChars + 2));
+		Filter filter = new Filter();
 		int count = 0;
 		boolean pendingSpace = false;
 		boolean visible = false;
-		boolean afterPictograph = false;
 		boolean exhausted = false;
 		long budget = Math.min(Math.max((long) SCAN_FACTOR * maxChars, MIN_SCAN_BUDGET), MAX_SCAN_BUDGET);
 		long scanned = 0;
@@ -69,12 +69,11 @@ public final class TextSanitizer {
 			}
 			int cp = Character.codePointAt(raw, i);
 			i += Character.charCount(cp);
-			boolean keep = keeps(cp, afterPictograph, i < length ? Character.codePointAt(raw, i) : -1);
-			afterPictograph = pictographAfter(cp, afterPictograph);
 			if (isSpaceLike(cp)) {
+				filter.skip(cp);
 				pendingSpace = count > 0;
 			}
-			else if (keep && (visible || !isMark(cp))) {
+			else if (filter.admit(cp, i < length ? Character.codePointAt(raw, i) : -1)) {
 				if (pendingSpace) {
 					out.append(' ');
 					count++;
@@ -95,39 +94,76 @@ public final class TextSanitizer {
 	}
 
 	/**
-	 * Removes control characters (except newline and tab) and every Unicode format character
-	 * (category Cf): zero-width and joiner characters, bidi controls and overrides, soft hyphen, word
-	 * joiner, invisible operators, BOM, and the U+E0000 tag block that can smuggle invisible ASCII.
-	 * The one exception is U+200D (zero width joiner), kept only when it sits between two extended
-	 * pictographs (skipping variation selectors and skin tone modifiers before it), so emoji
-	 * sequences such as a woman technologist survive. Works on code points without copying them into
-	 * an array, so surrogate pairs are handled and extra memory is one output buffer.
+	 * Removes what a reader cannot see, with the same rules as {@link #plainText} but keeping
+	 * whitespace and newlines: control characters (except newline and tab), every Unicode format
+	 * character (Cf), every default ignorable code point and listed blank glyph (see
+	 * {@link InvisibleCodePoints}: this includes the U+E0000 tag block that can smuggle invisible
+	 * ASCII and the Hangul fillers), and variation selectors or combining marks with no visible base
+	 * directly before them. The exception is U+200D (zero width joiner), kept only between two
+	 * extended pictographs, so emoji sequences such as a woman technologist survive. Works on code
+	 * points without copying them into an array, so surrogate pairs are handled and extra memory is
+	 * one output buffer.
 	 */
 	static String stripHidden(CharSequence text) {
 		int length = text.length();
 		StringBuilder out = new StringBuilder(length);
-		boolean afterPictograph = false;
+		Filter filter = new Filter();
 		for (int i = 0; i < length;) {
 			int cp = Character.codePointAt(text, i);
 			i += Character.charCount(cp);
-			if (keeps(cp, afterPictograph, i < length ? Character.codePointAt(text, i) : -1)) {
+			if (filter.admit(cp, i < length ? Character.codePointAt(text, i) : -1)) {
 				out.appendCodePoint(cp);
 			}
-			afterPictograph = pictographAfter(cp, afterPictograph);
 		}
 		return out.toString();
 	}
 
-	/** Newline and tab pass; control and format characters are dropped; a ZWJ survives inside emoji. */
+	/** The single decision path shared by {@link #plainText} and {@link #stripHidden}. */
+	private static final class Filter {
+
+		private boolean afterPictograph;
+
+		private boolean afterBase;
+
+		/** Whether {@code cp} stays; {@code next} is the following code point or -1. Updates the state. */
+		boolean admit(int cp, int next) {
+			boolean keep = keeps(cp, afterPictograph, next);
+			afterPictograph = pictographAfter(cp, afterPictograph);
+			if (!keep) {
+				return false;
+			}
+			if (isMark(cp)) {
+				return afterBase;
+			}
+			afterBase = isVisibleBase(cp);
+			return true;
+		}
+
+		/** A code point the caller handled itself (a space): it ends any base. */
+		void skip(int cp) {
+			afterPictograph = pictographAfter(cp, afterPictograph);
+			afterBase = false;
+		}
+
+	}
+
+	/**
+	 * Newline and tab pass. A ZWJ survives only inside emoji. Variation selectors pass here and are
+	 * then kept only after a visible base. Control, format, default ignorable and blank-glyph code
+	 * points are dropped.
+	 */
 	private static boolean keeps(int cp, boolean afterPictograph, int next) {
 		if (cp == '\n' || cp == '\t') {
 			return true;
 		}
-		int type = Character.getType(cp);
-		if (type != Character.CONTROL && type != Character.FORMAT) {
+		if (cp == ZERO_WIDTH_JOINER) {
+			return afterPictograph && next >= 0 && Character.isExtendedPictographic(next);
+		}
+		if (InvisibleCodePoints.isVariationSelector(cp)) {
 			return true;
 		}
-		return cp == ZERO_WIDTH_JOINER && afterPictograph && next >= 0 && Character.isExtendedPictographic(next);
+		int type = Character.getType(cp);
+		return type != Character.CONTROL && type != Character.FORMAT && !InvisibleCodePoints.isInvisible(cp);
 	}
 
 	/** Whether the last code point that is not a selector or skin tone modifier is an extended pictograph. */
@@ -139,7 +175,8 @@ public final class TextSanitizer {
 	}
 
 	private static boolean isSpaceLike(int cp) {
-		return Character.isWhitespace(cp) || Character.isSpaceChar(cp) || cp == '\u0085' || cp == '\u2028' || cp == '\u2029';
+		return Character.isWhitespace(cp) || Character.isSpaceChar(cp) || cp == '\u0085' || cp == '\u2028'
+				|| cp == '\u2029';
 	}
 
 	private static boolean isMark(int cp) {
@@ -148,11 +185,17 @@ public final class TextSanitizer {
 				|| type == Character.COMBINING_SPACING_MARK;
 	}
 
-	/** A base character a reader can see: not a mark, separator, control, format, unassigned, private or surrogate. */
-	private static boolean isVisibleBase(int cp) {
+	/**
+	 * The one predicate for "has visible content": false for invisible code points (see
+	 * {@link InvisibleCodePoints}), marks and selectors, whitespace and space separators, and
+	 * control, format, unassigned, private-use and surrogate code points.
+	 */
+	static boolean isVisibleBase(int cp) {
+		if (InvisibleCodePoints.isInvisible(cp) || Character.isWhitespace(cp) || Character.isSpaceChar(cp)) {
+			return false;
+		}
 		return switch (Character.getType(cp)) {
 			case Character.NON_SPACING_MARK, Character.ENCLOSING_MARK, Character.COMBINING_SPACING_MARK,
-					Character.SPACE_SEPARATOR, Character.LINE_SEPARATOR, Character.PARAGRAPH_SEPARATOR,
 					Character.CONTROL, Character.FORMAT, Character.UNASSIGNED, Character.PRIVATE_USE,
 					Character.SURROGATE -> false;
 			default -> true;

@@ -235,6 +235,53 @@ class TextSanitizerTest {
 	}
 
 
+	@ParameterizedTest
+	@ValueSource(ints = { 0x3164, 0x115F, 0x1160, 0xFFA0 })
+	void plainText_whenHangulFiller_shouldBeInvisible(int filler) {
+		assertThat(TextSanitizer.plainText(cp(filler), 200)).isNull();
+		assertThat(TextSanitizer.plainText(cp(filler).repeat(300), 200)).isNull();
+		assertThat(TextSanitizer.plainText("Hello" + cp(filler) + "World", 200)).isEqualTo("HelloWorld");
+		assertThat(TextSanitizer.plainText(cp(filler).repeat(250) + "Game", 200)).isEqualTo("Game");
+	}
+
+	@Test
+	void plainText_whenBrailleBlank_shouldBeInvisible() {
+		assertThat(TextSanitizer.plainText(cp(0x2800), 200)).isNull();
+		assertThat(TextSanitizer.plainText("a" + cp(0x2800) + "b", 200)).isEqualTo("ab");
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = { 0x180E, 0x2065, 0xFFF0, 0xE0001, 0xE01F0, 0x17B4, 0x034F })
+	void plainText_whenDefaultIgnorableCodePoint_shouldStripAloneAndEmbedded(int ignorable) {
+		assertThat(TextSanitizer.plainText(cp(ignorable), 200)).isNull();
+		assertThat(TextSanitizer.plainText("ab" + cp(ignorable) + "cd", 200)).isEqualTo("abcd");
+	}
+
+	@Test
+	void plainText_whenMongolianSelector_shouldKeepAfterLetterAndDropOrphan() {
+		String letter = cp(0x1820);
+		String withSelector = letter + cp(0x180B);
+
+		assertThat(TextSanitizer.plainText(withSelector, 200)).isEqualTo(withSelector);
+		assertThat(TextSanitizer.plainText(cp(0x180B) + letter, 200)).isEqualTo(letter);
+		assertThat(TextSanitizer.plainText(cp(0x180B), 200)).isNull();
+		assertThat(TextSanitizer.plainText(letter + " " + cp(0x180B) + "x", 200)).isEqualTo(letter + " x");
+	}
+
+	@Test
+	void plainText_whenLegitimateScriptsAndEmoji_shouldBeUnchanged() {
+		String korean = "\uD55C\uAD6D\uC5B4 \uAC8C\uC784";
+		String japanese = "\u30C9\u30E9\u30B4\u30F3\u30AF\u30A8\u30B9\u30C8";
+		String joined = cp(WOMAN, ZWJ, LAPTOP);
+		String heart = cp(0x2764, 0xFE0F);
+		String cjk = cp(0x8FBB, 0xE0100);
+		String accent = "e" + cp(0x0301);
+
+		for (String text : new String[] { korean, japanese, joined, heart, cjk, accent }) {
+			assertThat(TextSanitizer.plainText(text, 200)).isEqualTo(text);
+		}
+	}
+
 	/** Long run of one character, then a tail; records how much was read and refuses to be copied wholesale. */
 	private static final class CountingSequence implements CharSequence {
 
