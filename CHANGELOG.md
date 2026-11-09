@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- `Dockerfile` (multi-stage, Temurin 25 Alpine, JDK AOT cache, non-root), `.dockerignore`, CI image build with an MCP smoke test, Dependabot for base images. See README, "Run with Docker".
+
 ### Changed
 - Project renamed from `yasmcp` to `ya-steam-mcp`: artifact, jar (`ya-steam-mcp-<version>.jar`), MCP server name, Java package `io.dmitriy.yasteammcp`. Update host configurations that hard-code the old jar path.
 

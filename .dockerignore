@@ -1,0 +1,6 @@
+*
+!mvnw
+!.mvn/
+!pom.xml
+!src/main/
+!docker/

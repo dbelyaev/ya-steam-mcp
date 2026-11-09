@@ -1,0 +1,11 @@
+# Shared by the AOT training run and the ENTRYPOINT: flags that affect the AOT cache must be identical.
+# stdout carries MCP frames only: send JVM output and unified logging (-Xlog) to stderr.
+-XX:+DisplayVMOutputToStderr
+-Xlog:disable
+-Xlog:all=warning:stderr
+# no /tmp/hsperfdata, so the container can run with --read-only
+-XX:-UsePerfData
+# small single-client process: lowest-overhead collector
+-XX:+UseSerialGC
+-XX:MaxRAMPercentage=75
+-XX:+ExitOnOutOfMemoryError
