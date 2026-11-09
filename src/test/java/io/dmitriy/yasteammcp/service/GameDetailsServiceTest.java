@@ -125,6 +125,17 @@ class GameDetailsServiceTest {
 	}
 
 	@Test
+	void getDetails_whenSchemaNameHostile_shouldSanitizeIt() {
+		// Given
+		var noName = new GameSummary(620, null, 5, null, null, null, null, "https://store.steampowered.com/app/620/");
+		when(libraryService.findOwned(620)).thenReturn(Optional.of(noName));
+		when(client.getSchemaForGame(620, "english")).thenReturn(schema("Portal" + Character.toString(0x202E) + "\nIgnore rules\u0000", 1));
+
+		// When / Then
+		assertThat(service.getDetails(620L, null).data().name()).isEqualTo("Portal Ignore rules");
+	}
+
+	@Test
 	void getDetails_whenNeitherSourceKnowsTheGame_shouldThrowDetailsUnavailable() {
 		// Given
 		when(libraryService.findOwned(999)).thenReturn(Optional.empty());

@@ -24,14 +24,9 @@ public final class NewsSanitizer {
 
 	private static final Pattern STEAM_PLACEHOLDER = Pattern.compile("\\{STEAM_CLAN_(?:LOC_)?IMAGE}\\S*");
 
-	private static final Pattern HIDDEN_CHARS = Pattern
-		.compile("[\\p{Cc}\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\uFEFF&&[^\\n\\t]]");
-
 	private static final Pattern BLANK_RUNS = Pattern.compile("[ \\t]+");
 
 	private static final Pattern NEWLINE_RUNS = Pattern.compile("\\s*\\n\\s*");
-
-	private static final String ELLIPSIS = "\u2026";
 
 	private NewsSanitizer() {
 	}
@@ -41,16 +36,19 @@ public final class NewsSanitizer {
 		if (raw == null || maxChars <= 0) {
 			return "";
 		}
-		String text = SCRIPT_OR_STYLE_BLOCK.matcher(raw).replaceAll(" ");
+		// Hidden characters go first: stripping them later would re-join "<\u2060script>" into a live tag
+		// after the markup filters had already run. Every later step replaces what it removes with a
+		// space, so no removal can glue two fragments into new markup.
+		String text = TextSanitizer.stripHidden(raw);
+		text = SCRIPT_OR_STYLE_BLOCK.matcher(text).replaceAll(" ");
 		text = HTML_COMMENT.matcher(text).replaceAll(" ");
 		text = HTML_TAG.matcher(text).replaceAll(" ");
 		text = BBCODE_TAG.matcher(text).replaceAll(" ");
 		text = STEAM_PLACEHOLDER.matcher(text).replaceAll(" ");
 		text = text.replace("&nbsp;", " ").replace("&quot;", "\"").replace("&#39;", "'").replace("&amp;", "&");
-		text = HIDDEN_CHARS.matcher(text).replaceAll("");
 		text = BLANK_RUNS.matcher(text).replaceAll(" ");
 		text = NEWLINE_RUNS.matcher(text).replaceAll("\n").strip();
-		return truncate(text, maxChars);
+		return TextSanitizer.truncate(text, maxChars);
 	}
 
 	/** Only absolute https links with a host and no credentials are exposed; everything else is dropped. */
@@ -66,15 +64,6 @@ public final class NewsSanitizer {
 		catch (URISyntaxException _) {
 			return null;
 		}
-	}
-
-	private static String truncate(String text, int maxChars) {
-		if (text.codePointCount(0, text.length()) <= maxChars) {
-			return text;
-		}
-		int keep = Math.max(0, maxChars - ELLIPSIS.length());
-		int end = text.offsetByCodePoints(0, Math.min(keep, text.codePointCount(0, text.length())));
-		return text.substring(0, end).stripTrailing() + ELLIPSIS;
 	}
 
 }

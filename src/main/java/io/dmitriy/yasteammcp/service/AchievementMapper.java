@@ -7,6 +7,7 @@ import org.jspecify.annotations.Nullable;
 import io.dmitriy.yasteammcp.model.Achievement;
 import io.dmitriy.yasteammcp.steamdto.GameSchemaResponse;
 import io.dmitriy.yasteammcp.steamdto.PlayerAchievementsResponse;
+import io.dmitriy.yasteammcp.support.TextSanitizer;
 
 /** Joins a player's achievement with its schema entry (names, descriptions, hidden flag). */
 final class AchievementMapper {
@@ -24,17 +25,18 @@ final class AchievementMapper {
 		boolean achieved = player.achieved() != null && player.achieved() == 1;
 		Long unlock = player.unlocktime();
 		Instant unlockTime = achieved && unlock != null && unlock > 0 ? Instant.ofEpochSecond(unlock) : null;
-		String displayName = firstNonBlank(schema == null ? null : schema.displayName(), player.name());
-		String description = firstNonBlank(schema == null ? null : schema.description(), player.description());
+		String displayName = firstNonBlank(schema == null ? null : schema.displayName(), player.name(),
+				TextSanitizer.MAX_NAME_CHARS);
+		String description = firstNonBlank(schema == null ? null : schema.description(), player.description(),
+				TextSanitizer.MAX_DESCRIPTION_CHARS);
 		Boolean hidden = schema == null || schema.hidden() == null ? null : schema.hidden() == 1;
 		return new Achievement(id, displayName, description, achieved, unlockTime, hidden);
 	}
 
-	private static @Nullable String firstNonBlank(@Nullable String first, @Nullable String second) {
-		if (first != null && !first.isBlank()) {
-			return first;
-		}
-		return second != null && !second.isBlank() ? second : null;
+	/** Sanitized first usable text; a value that is blank after sanitizing falls through to the next. */
+	private static @Nullable String firstNonBlank(@Nullable String first, @Nullable String second, int maxChars) {
+		String clean = TextSanitizer.plainText(first, maxChars);
+		return clean != null ? clean : TextSanitizer.plainText(second, maxChars);
 	}
 
 }

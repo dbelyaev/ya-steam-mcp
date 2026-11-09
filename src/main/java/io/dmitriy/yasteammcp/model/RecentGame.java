@@ -3,6 +3,7 @@ package io.dmitriy.yasteammcp.model;
 import org.jspecify.annotations.Nullable;
 
 import io.dmitriy.yasteammcp.steamdto.RecentlyPlayedResponse;
+import io.dmitriy.yasteammcp.support.TextSanitizer;
 
 public record RecentGame(
 		long appid,
@@ -12,7 +13,7 @@ public record RecentGame(
 		String storeUrl) {
 
 	public static RecentGame from(RecentlyPlayedResponse.Game game) {
-		return new RecentGame(game.appid(), game.name(), game.playtimeForever(), game.playtime2weeks(),
+		return new RecentGame(game.appid(), TextSanitizer.plainText(game.name(), TextSanitizer.MAX_NAME_CHARS), game.playtimeForever(), game.playtime2weeks(),
 				StoreUrls.app(game.appid()));
 	}
 
