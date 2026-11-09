@@ -65,7 +65,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # Not pushed anywhere. Layers (dependencies, jar layers, AOT cache) are cached in the GitHub cache.
+      # Not pushed anywhere. Layers (dependencies, jar layers, jlink JRE) are cached in the GitHub cache.
       - name: Build image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -76,14 +76,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Same session the AOT cache is trained with: stdout must be JSON-RPC frames only, six tools, exit 0 on EOF.
+      # stdout must be JSON-RPC frames only, six tools, exit 0 on EOF.
       - name: MCP smoke test
         run: |
           set -euo pipefail
           # the sleep keeps stdin open until the last reply is written; EOF then ends the server (exit 0)
-          (cat docker/training-session.jsonl; sleep 3) | timeout 60 docker run -i --rm --read-only --cap-drop=ALL \
+          (cat docker/smoke-session.jsonl; sleep 3) | timeout 60 docker run -i --rm --read-only --cap-drop=ALL \
             --security-opt=no-new-privileges ya-steam-mcp:ci > out.jsonl 2> err.log
           while IFS= read -r line; do printf '%s' "$line" | jq -e . > /dev/null; done < out.jsonl
           test "$(jq -s '[.[] | select(.id == 2) | .result.tools | length] | first' out.jsonl)" = 6
           jq -e -s 'any(.[]; .id == 3 and .result.isError == true)' out.jsonl
-          ! grep -qi 'aot' err.log || { cat err.log; exit 1; }

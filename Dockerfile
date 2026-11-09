@@ -16,8 +16,17 @@ RUN ./mvnw -B -ntp -Dmaven.repo.local=/build/.m2 package -DskipTests -Djacoco.sk
  && java -Djarmode=tools -jar target/ya-steam-mcp-*.jar extract --layers --destination /extracted \
  && mv /extracted/application/ya-steam-mcp-*.jar /extracted/application/application.jar
 
+# Layer 3: minimal JRE. Modules are derived from the actual classpath, so a new dependency needs no edit here.
+# jdk.unsupported (sun.misc.Unsafe, used by Caffeine/Netty-style libs), jdk.crypto.ec and jdk.localedata are
+# added explicitly because jdeps cannot see reflective or service-loader use.
+RUN MODULES="$(jdeps --ignore-missing-deps --multi-release 25 --print-module-deps \
+      --class-path '/extracted/dependencies/lib/*' /extracted/application/application.jar)" \
+ && jlink --add-modules "${MODULES},jdk.unsupported,jdk.crypto.ec,jdk.localedata" \
+      --strip-debug --no-header-files --no-man-pages --compress zip-6 --output /jre \
+ && /jre/bin/java --list-modules | tr '\n' ' '
 
-FROM eclipse-temurin:25-jre-alpine@sha256:e1898fd6a11fc965a994d8ace186fd3585aeb636cf8f05f47a723fcfee0b0918 AS runtime
+
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS runtime
 
 ARG VERSION=dev
 LABEL org.opencontainers.image.title="ya-steam-mcp" \
@@ -26,21 +35,19 @@ LABEL org.opencontainers.image.title="ya-steam-mcp" \
       org.opencontainers.image.version="${VERSION}"
 
 RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app app
+ENV PATH="/opt/jre/bin:${PATH}"
 WORKDIR /app
 
-# Least to most frequently changing, so a code change only rebuilds the last COPY and the AOT layer.
+COPY --from=build /jre /opt/jre
+
+# Least to most frequently changing, so a code change only rebuilds the last COPY.
 COPY --from=build /extracted/dependencies/ ./
 COPY --from=build /extracted/spring-boot-loader/ ./
 COPY --from=build /extracted/snapshot-dependencies/ ./
 COPY --from=build /extracted/application/ ./
-COPY docker/jvm.args docker/training-session.jsonl ./
-
-# AOT cache (JDK 25): train with a real MCP session on stdin (offline: no Steam key means no network call).
-# The sleep keeps stdin open until the last reply is written (EOF stops the server at once); the EOF then ends it
-# cleanly, which writes the cache. timeout fails the build instead of hanging.
-RUN (cat training-session.jsonl; sleep 3) | timeout 120 java @jvm.args -XX:AOTCacheOutput=app.aot -jar application.jar > /dev/null
+COPY docker/jvm.args ./
 
 USER app
 
 # STDIO server: no EXPOSE, no HEALTHCHECK. Run with `docker run -i` (never -t) and pass secrets with -e at runtime.
-ENTRYPOINT ["java", "@jvm.args", "-XX:AOTCache=app.aot", "-jar", "application.jar"]
+ENTRYPOINT ["java", "@jvm.args", "-jar", "application.jar"]
