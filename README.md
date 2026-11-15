@@ -123,6 +123,33 @@ Never commit a configuration that contains a real key.
 The server starts without a key or SteamID and without network access; tools then answer with
 `CONFIGURATION_MISSING` until you configure them.
 
+#### Run with Docker
+
+```sh
+docker build -t ya-steam-mcp .
+docker run -i --rm --read-only --memory=512m --cap-drop=ALL --security-opt=no-new-privileges \
+  -e STEAM_API_KEY -e STEAM_ID ya-steam-mcp
+```
+
+`-e NAME` without a value forwards the variable from the host environment, so the key is not written into the
+command line or a config file. `-i` is required and `-t` must **not** be used (a TTY corrupts the JSON-RPC
+framing). The container exits when the host closes stdin. Host configuration:
+
+```json
+{
+  "mcpServers": {
+    "steam": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "--read-only", "--memory=512m", "--cap-drop=ALL",
+               "--security-opt=no-new-privileges", "-e", "STEAM_API_KEY", "-e", "STEAM_ID", "ya-steam-mcp"],
+      "env": {"STEAM_API_KEY": "<YOUR_KEY>", "STEAM_ID": "<YOUR_STEAM_ID64>"}
+    }
+  }
+}
+```
+
+Claude Code: `claude mcp add steam -e STEAM_API_KEY=... -e STEAM_ID=... -- docker run -i --rm -e STEAM_API_KEY -e STEAM_ID ya-steam-mcp`.
+
 ## Configuration
 
 Every property can be set as an environment variable (Spring relaxed binding: `steam.api.read-timeout` is

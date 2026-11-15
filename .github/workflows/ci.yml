@@ -56,3 +56,30 @@ jobs:
             target/surefire-reports
             target/failsafe-reports
           retention-days: 7
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Not pushed anywhere. Layers (dependencies, jar layers, jlink JRE) are cached in the GitHub cache.
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ya-steam-mcp:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The jar's protocol behaviour is covered by the e2e tests in `verify`. This only proves the image boots
+      # (e.g. the jlink JRE has every module): stdin stays open while it starts, then EOF makes it exit 0.
+      - name: Image boots
+        run: |
+          sleep 5 | timeout 60 docker run --rm -i --read-only --cap-drop=ALL --security-opt=no-new-privileges \
+            ya-steam-mcp:ci 2> err.log \
+            || { echo "image failed to boot" >&2; cat err.log >&2; exit 1; }
