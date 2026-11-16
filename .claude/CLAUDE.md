@@ -44,3 +44,6 @@ Run focused tests followed by `./mvnw verify`. Test the native executable when A
 ## Delegation
 
 Delegate all repository searches and test runs to Haiku 5.5 subagents (`search`, `grep`, `audit`) to keep main context under 10k tokens.
+
+- Before calling `audit`, commit (a WIP commit is fine) and pass `expected_sha`. Use a patch only for uncommitted extras on top of that SHA, never as a substitute for the checkout.
+- If `audit` returns `BLOCKED`, `WRONG SNAPSHOT` or `PATCH DID NOT APPLY`, report it to the user and stop. Do not build patch-file or second-agent workarounds.

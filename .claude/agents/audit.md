@@ -18,6 +18,18 @@ The caller passes:
 - `patch` (optional): a `git diff` of changes that are not committed yet.
 - the commands to run, for example `./mvnw -B clean verify` or `./mvnw -B -Dtest=Foo test`.
 
+## Command rules
+
+Permissions are pre-approved only for plain, single commands. Follow these so nothing prompts:
+
+- One command per Bash call, run from the worktree's current directory. No `cd`, `&&`, `;` or pipes.
+  Filter output with the Grep and Read tools, not `grep`/`head`/`tail`.
+- Jar inspection: `jar tf target/ya-steam-mcp-<version>.jar > target/jar-contents.txt`, then use the
+  Grep tool on that file (for example for `tomcat`, `springframework/security`, `http`).
+- If any command is denied by permissions, stop. Make the first line of your report
+  `BLOCKED: <exact command>`. Do not ask the caller to grant permission and do not try another way
+  around it.
+
 ## Steps
 
 1. **Identify what you are testing.** Run `pwd`, `git rev-parse HEAD` and `git status --short`, and put
@@ -46,6 +58,9 @@ head: 9f8e7d6 (checked out from 902af33)   expected: 9f8e7d6   patch: applied (2
 status: M src/main/Foo.java, M src/test/FooTest.java
 ./mvnw -B -q -Dtest=FooTest test: PASS  Tests run: 4, Failures: 0, Errors: 0
 ```
+
+Stop statuses (`WRONG SNAPSHOT`, `PATCH DID NOT APPLY`, `BLOCKED: <command>`) replace the whole report
+and go on the first line.
 
 On failure, replace the last line with `<command>: FAIL` followed by the first 30 lines of the error.
 `patch:` is `none` when no patch was given, and `status:` is `clean` when `git status --short` is empty.
