@@ -4,5 +4,19 @@
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pwd)",
+      "Bash(git rev-parse:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git cat-file:*)",
+      "Bash(git checkout --detach:*)",
+      "Bash(git apply:*)",
+      "Bash(./mvnw:*)",
+      "Bash(jar tf:*)"
+    ]
   }
 }
