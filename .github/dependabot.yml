@@ -5,6 +5,9 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      maven-dependencies:
+        patterns: ["*"]
     ignore:
       # Spring AI 2.0.x is paired with Boot 4.0/4.1; milestone releases are not wanted
       - dependency-name: "org.springframework.ai:*"
@@ -13,7 +16,13 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    groups:
+      docker-images:
+        patterns: ["*"]
